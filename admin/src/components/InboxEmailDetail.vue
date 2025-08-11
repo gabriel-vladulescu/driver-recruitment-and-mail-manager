@@ -7,6 +7,14 @@
     </div>
 
     <div v-else class="email-detail-container">
+      <!-- Back Button -->
+      <div class="back-header">
+        <button @click="$emit('backToList')" class="back-btn">
+          <ArrowLeft class="back-icon" />
+          Înapoi la lista de email-uri
+        </button>
+      </div>
+      
       <!-- Email Header -->
       <div class="email-header">
         <div class="header-main">
@@ -22,30 +30,53 @@
           </div>
           
           <div class="header-actions">
-            <button 
-              @click="toggleReadStatus" 
-              class="action-btn"
-              :title="email.is_read ? 'Marchează ca necitit' : 'Marchează ca citit'"
-            >
-              <MailOpen v-if="email.is_read" class="action-icon" />
-              <Mail v-else class="action-icon" />
-            </button>
-            
-            <button 
-              @click="showLabelModal = true" 
-              class="action-btn"
-              title="Setează etichetă"
-            >
-              <Tag class="action-icon" />
-            </button>
-            
-            <button 
-              @click="deleteEmail" 
-              class="action-btn danger"
-              title="Șterge email"
-            >
-              <Trash2 class="action-icon" />
-            </button>
+            <template v-if="view?.type === 'trash'">
+              <!-- Trash-specific actions -->
+              <button 
+                @click="restoreEmail" 
+                class="action-btn restore-btn"
+                title="Restaurează email-ul"
+              >
+                <RotateCcw class="action-icon" />
+                Restaurează
+              </button>
+              
+              <button 
+                @click="permanentlyDeleteEmail" 
+                class="action-btn danger permanent-delete-btn"
+                title="Șterge definitiv"
+              >
+                <Trash2 class="action-icon" />
+                Șterge definitiv
+              </button>
+            </template>
+            <template v-else>
+              <!-- Normal email actions -->
+              <button 
+                @click="toggleReadStatus" 
+                class="action-btn"
+                :title="email.is_read ? 'Marchează ca necitit' : 'Marchează ca citit'"
+              >
+                <MailOpen v-if="email.is_read" class="action-icon" />
+                <Mail v-else class="action-icon" />
+              </button>
+              
+              <button 
+                @click="showLabelModal = true" 
+                class="action-btn"
+                title="Setează etichetă"
+              >
+                <Tag class="action-icon" />
+              </button>
+              
+              <button 
+                @click="deleteEmail" 
+                class="action-btn danger"
+                title="Șterge email"
+              >
+                <Trash2 class="action-icon" />
+              </button>
+            </template>
           </div>
         </div>
         
@@ -148,12 +179,17 @@ import axios from 'axios'
 import DOMPurify from 'dompurify'
 import {
   Mail, MailOpen, Tag, Trash2, X, Paperclip, Calendar, User,
-  Briefcase, Bookmark, Star, Heart, Flag, Archive
+  Briefcase, Bookmark, Star, Heart, Flag, Archive, RotateCcw, ArrowLeft
 } from 'lucide-vue-next'
 
 // Props
 interface Props {
   email?: any | null
+  view?: {
+    type: 'category' | 'label' | 'all' | 'trash'
+    id?: number
+    data?: any
+  } | null
 }
 
 const props = defineProps<Props>()
@@ -162,6 +198,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   emailUpdated: []
   emailDeleted: [emailId: number]
+  backToList: []
 }>()
 
 // State
@@ -286,6 +323,46 @@ const assignLabel = async () => {
   }
 }
 
+const fetchLabels = async () => {
+  try {
+    const response = await axios.get('http://localhost:4000/api/inbox/labels')
+    availableLabels.value = response.data.data
+  } catch (err) {
+    console.error('Error fetching labels:', err)
+  }
+}
+
+// Trash-specific functions
+const restoreEmail = async () => {
+  if (!props.email) return
+  
+  try {
+    await axios.post(`http://localhost:4000/api/inbox/emails/${props.email.id}/restore`)
+    emit('emailUpdated')
+    emit('backToList') // Return to list after restore
+  } catch (error: any) {
+    console.error('Error restoring email:', error)
+    alert(error.response?.data?.message || 'Eroare la restaurarea email-ului')
+  }
+}
+
+const permanentlyDeleteEmail = async () => {
+  if (!props.email) return
+  
+  if (!confirm('Sigur vrei să ștergi definitiv acest email? Această acțiune nu poate fi anulată.')) {
+    return
+  }
+  
+  try {
+    await axios.delete(`http://localhost:4000/api/inbox/emails/${props.email.id}/permanent`)
+    emit('emailDeleted', props.email.id)
+    emit('backToList') // Return to list after delete
+  } catch (error: any) {
+    console.error('Error permanently deleting email:', error)
+    alert(error.response?.data?.message || 'Eroare la ștergerea definitivă')
+  }
+}
+
 // Watch for email changes to set initial label
 watch(() => props.email, (newEmail) => {
   if (newEmail) {
@@ -295,15 +372,6 @@ watch(() => props.email, (newEmail) => {
     fetchLabels()
   }
 }, { immediate: true })
-
-const fetchLabels = async () => {
-  try {
-    const response = await axios.get('http://localhost:4000/api/inbox/labels')
-    availableLabels.value = response.data.data
-  } catch (err) {
-    console.error('Error fetching labels:', err)
-  }
-}
 </script>
 
 <style scoped>
@@ -757,6 +825,87 @@ const fetchLabels = async () => {
   .modal-content {
     width: 95%;
     margin: 1rem;
+  }
+}
+/* Back button styles */
+.back-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  background: #f8f9fa;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  color: #6c757d;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0.5rem;
+  border-radius: 6px;
+}
+
+.back-btn:hover {
+  color: #34d186;
+  background: rgba(52, 209, 134, 0.1);
+}
+
+.back-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Trash-specific button styles */
+.restore-btn {
+  background: linear-gradient(135deg, #28a745 0%, #34d186 100%);
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.restore-btn:hover {
+  background: linear-gradient(135deg, #218838 0%, #2e9c71 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.permanent-delete-btn {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.permanent-delete-btn:hover {
+  background: linear-gradient(135deg, #c82333 0%, #a71e2a 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.header-actions {
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .restore-btn, .permanent-delete-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+    gap: 0.3rem;
+  }
+  
+  .header-actions {
+    gap: 0.5rem;
   }
 }
 </style>

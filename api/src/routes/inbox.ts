@@ -12,7 +12,10 @@ import {
   deleteLabel,
   getCategories,
   fetchEmailsFromServer,
-  testImapConnection
+  testImapConnection,
+  getDeletedEmails,
+  restoreEmail,
+  permanentlyDeleteEmail
 } from '../controllers/inboxController';
 
 const router = Router();
@@ -39,5 +42,10 @@ router.get('/categories', getCategories);
 // Email fetching from server
 router.post('/fetch-emails', fetchEmailsFromServer);
 router.get('/test-imap', testImapConnection);
+
+// Trash management
+router.get('/trash', getDeletedEmails);
+router.post('/emails/:id/restore', restoreEmail);
+router.delete('/emails/:id/permanent', permanentlyDeleteEmail);
 
 export default router;

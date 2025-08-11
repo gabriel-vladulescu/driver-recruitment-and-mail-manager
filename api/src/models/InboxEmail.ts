@@ -19,6 +19,7 @@ export interface InboxEmailAttributes {
   is_read: boolean;
   createdAt?: Date;
   updatedAt?: Date;
+  deletedAt?: Date;
 }
 
 export interface InboxEmailCreationAttributes extends Omit<InboxEmailAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
@@ -39,6 +40,7 @@ class InboxEmail extends Model<InboxEmailAttributes, InboxEmailCreationAttribute
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
+  public readonly deletedAt!: Date;
 
   // Association methods
   public getInboxType!: BelongsToGetAssociationMixin<InboxType>;
@@ -101,8 +103,24 @@ InboxEmail.init({
     allowNull: false
   },
   custom_data: {
-    type: DataTypes.JSON,
-    allowNull: true
+    type: DataTypes.TEXT,
+    allowNull: true,
+    get() {
+      const value = this.getDataValue('custom_data') as unknown as string;
+      if (!value) return null;
+      try {
+        return JSON.parse(value);
+      } catch (error) {
+        return null;
+      }
+    },
+    set(value: any) {
+      if (value === null || value === undefined) {
+        this.setDataValue('custom_data', null as any);
+      } else {
+        this.setDataValue('custom_data', JSON.stringify(value) as any);
+      }
+    }
   },
   is_read: {
     type: DataTypes.BOOLEAN,
@@ -112,7 +130,8 @@ InboxEmail.init({
 }, {
   sequelize,
   tableName: 'inbox_emails',
-  timestamps: true
+  timestamps: true,
+  paranoid: true
 });
 
 // Define associations

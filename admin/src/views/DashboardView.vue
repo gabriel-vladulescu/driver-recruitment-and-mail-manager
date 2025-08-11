@@ -8,7 +8,16 @@
     <MessageDetail v-if="selectedMessage" />
     <SentMessageDetail v-else-if="selectedSentMessage" />
     <div v-else-if="selectedInboxView" class="inbox-container">
+      <InboxEmailDetail 
+        v-if="selectedInboxEmail"
+        :email="selectedInboxEmail"
+        :view="selectedInboxView"
+        @email-updated="handleEmailUpdated"
+        @email-deleted="handleEmailDeleted"
+        @back-to-list="handleBackToList"
+      />
       <InboxEmailList 
+        v-else
         ref="emailListRef"
         :view="selectedInboxView"
         @select-email="handleSelectEmail"
@@ -16,11 +25,6 @@
         @fetch-started="startEmailFetch"
         @fetch-progress="updateEmailFetchProgress"
         @fetch-ended="endEmailFetch"
-      />
-      <InboxEmailDetail 
-        :email="selectedInboxEmail"
-        @email-updated="handleEmailUpdated"
-        @email-deleted="handleEmailDeleted"
       />
     </div>
     <div v-else class="empty-state">
@@ -64,7 +68,7 @@ import InboxEmailDetail from '@/components/InboxEmailDetail.vue'
 
 // Types from AppSidebar
 interface SelectedView {
-  type: 'category' | 'label' | 'all'
+  type: 'category' | 'label' | 'all' | 'trash'
   id?: number
   data?: any
 }
@@ -112,6 +116,10 @@ function handleInboxViewChange(view: SelectedView) {
 
 function handleSelectEmail(email: any) {
   selectedInboxEmail.value = email
+}
+
+function handleBackToList() {
+  selectedInboxEmail.value = null
 }
 
 async function handleEmailUpdated() {
@@ -172,7 +180,6 @@ defineExpose({
 
 .inbox-container {
   flex: 1;
-  display: flex;
   height: 100vh;
   overflow: hidden;
 }

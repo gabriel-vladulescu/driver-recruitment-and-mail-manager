@@ -1,6 +1,7 @@
 import Imap from 'imap';
 import { simpleParser, ParsedMail } from 'mailparser';
-import { InboxEmail, InboxType, InboxCategory } from '../models';
+import { InboxEmail, InboxType, InboxCategory, InboxDeleted } from '../models';
+import { Op } from 'sequelize';
 
 interface ImapConfig {
   host: string;
@@ -230,11 +231,60 @@ class ImapService {
       
       console.log('📧 Message-ID for duplicate check:', messageId);
       
+      // Check if this email was permanently deleted before
       if (messageId) {
+        console.log('🔍 Checking inbox_deleted for messageId:', messageId);
+        const deletedEmail = await InboxDeleted.findOne({
+          where: { message_id: messageId },
+          paranoid: false // Explicitly disable paranoid mode for this query
+        });
+        console.log('🔍 Found in inbox_deleted:', deletedEmail ? 'YES' : 'NO');
+
+        if (deletedEmail) {
+          console.log('⚠️ Email was permanently deleted previously, skipping fetch');
+          return null;
+        }
+      } else {
+        console.log('🔍 No messageId, using fallback check for permanently deleted emails');
+        // Fallback check for permanently deleted emails without Message-ID
+        const deletedEmail = await InboxDeleted.findOne({
+          where: {
+            email_from: fromParsed.address,
+            subject: parsedEmail.subject || 'Fără subiect'
+          },
+          paranoid: false // Explicitly disable paranoid mode for this query
+        });
+        console.log('🔍 Found in inbox_deleted (fallback):', deletedEmail ? 'YES' : 'NO');
+
+        if (deletedEmail) {
+          console.log('⚠️ Email was permanently deleted previously (fallback check), skipping fetch');
+          return null;
+        }
+      }
+
+      // Check if this email is in trash (soft deleted) - also skip re-importing
+      if (messageId) {
+        const trashedEmail = await InboxEmail.findOne({
+          where: {
+            custom_data: {
+              [Op.like]: `%"messageId":"${messageId.replace(/"/g, '\\"')}"%`
+            }
+          },
+          paranoid: false // Include soft deleted records
+        });
+
+        if (trashedEmail && trashedEmail.deletedAt) {
+          console.log('⚠️ Email is in trash, skipping re-import');
+          return null;
+        }
+      }
+      
+      if (messageId) {
+        // Search for existing emails with this Message-ID using LIKE for MariaDB compatibility
         const existingEmail = await InboxEmail.findOne({
           where: {
             custom_data: {
-              messageId: messageId
+              [Op.like]: `%"messageId":"${messageId.replace(/"/g, '\\"')}"%`
             }
           }
         });

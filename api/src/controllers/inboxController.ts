@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
-import { InboxEmail, InboxType, InboxCategory, InboxLabel } from '../models';
+import { InboxEmail, InboxType, InboxCategory, InboxLabel, InboxDeleted } from '../models';
 import ImapService from '../services/imapService';
 
 export const getEmails = async (req: Request, res: Response) => {
@@ -381,6 +381,157 @@ export const testImapConnection = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Eroare la testarea conexiunii IMAP'
+    });
+  }
+};
+
+export const getDeletedEmails = async (req: Request, res: Response) => {
+  try {
+    const { page = 1, limit = 20, search } = req.query;
+    const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+    
+    const whereClause: any = {};
+    
+    if (search) {
+      whereClause[Op.or] = [
+        { subject: { [Op.like]: `%${search}%` } },
+        { email_from: { [Op.like]: `%${search}%` } },
+        { email_from_name: { [Op.like]: `%${search}%` } }
+      ];
+    }
+
+    const emails = await InboxEmail.findAndCountAll({
+      where: {
+        ...whereClause,
+        deletedAt: { [Op.not]: null }
+      },
+      include: [
+        { model: InboxType, as: 'inboxType' },
+        { model: InboxCategory, as: 'inboxCategory' },
+        { model: InboxLabel, as: 'inboxLabel', required: false }
+      ],
+      order: [['deletedAt', 'DESC']],
+      limit: parseInt(limit as string),
+      offset,
+      paranoid: false // Include deleted emails
+    });
+
+    res.json({
+      success: true,
+      data: {
+        emails: emails.rows,
+        pagination: {
+          total: emails.count,
+          page: parseInt(page as string),
+          limit: parseInt(limit as string),
+          totalPages: Math.ceil(emails.count / parseInt(limit as string))
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get deleted emails error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Eroare la preluarea email-urilor șterse'
+    });
+  }
+};
+
+export const restoreEmail = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const email = await InboxEmail.findByPk(id, { paranoid: false });
+    if (!email) {
+      return res.status(404).json({
+        success: false,
+        message: 'Email nu a fost găsit'
+      });
+    }
+
+    if (!email.deletedAt) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email-ul nu este șters'
+      });
+    }
+
+    await email.restore();
+
+    res.json({
+      success: true,
+      message: 'Email-ul a fost restaurat'
+    });
+  } catch (error) {
+    console.error('Restore email error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Eroare la restaurarea email-ului'
+    });
+  }
+};
+
+export const permanentlyDeleteEmail = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const email = await InboxEmail.findByPk(id, { paranoid: false });
+    if (!email) {
+      return res.status(404).json({
+        success: false,
+        message: 'Email nu a fost găsit'
+      });
+    }
+
+    // Save email info to inbox_deleted table before permanent deletion
+    try {
+      // Extract Message-ID from custom_data
+      let messageId = `fallback-${email.id}-${Date.now()}`;
+      if (email.custom_data && typeof email.custom_data === 'object') {
+        const customData = email.custom_data as any;
+        if (customData.messageId) {
+          messageId = customData.messageId;
+        }
+      }
+
+      // Check if already exists before trying to create
+      const existingDeleted = await InboxDeleted.findOne({
+        where: { message_id: messageId },
+        paranoid: false // Explicitly disable paranoid mode for this query
+      });
+
+      if (!existingDeleted) {
+        await InboxDeleted.create({
+          message_id: messageId,
+          email_from: email.email_from,
+          subject: email.subject || 'Fără subiect',
+          deletion_date: new Date()
+        });
+      }
+    } catch (insertError: any) {
+      // Handle any remaining unique constraint errors gracefully
+      if (insertError.name === 'SequelizeUniqueConstraintError') {
+        console.log('Email already exists in inbox_deleted, continuing with deletion');
+      } else {
+        console.error('Error saving to inbox_deleted:', insertError);
+        return res.status(500).json({
+          success: false,
+          message: 'Eroare la salvarea informațiilor de ștergere'
+        });
+      }
+    }
+
+    await email.destroy({ force: true });
+
+    res.json({
+      success: true,
+      message: 'Email-ul a fost șters definitiv'
+    });
+  } catch (error) {
+    console.error('Permanently delete email error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Eroare la ștergerea definitivă'
     });
   }
 };

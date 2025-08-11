@@ -161,6 +161,21 @@
           />
         </div>
       </div>
+
+      <!-- Trash Section -->
+      <div class="messages-section trash-section">
+        <div 
+          class="section-header trash-header" 
+          @click="selectTrashView()"
+          :class="{ 'active': selectedView.type === 'trash' }"
+        >
+          <div class="section-title">
+            <Trash2 class="section-icon trash-icon" />
+            <span>Coș de gunoi</span>
+            <span v-if="deletedEmailsCount > 0" class="trash-badge">{{ deletedEmailsCount }}</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Label Management Modal -->
@@ -252,6 +267,7 @@ import {
   Loader,
   AlertCircle,
   Send,
+  Trash2,
   Tag,
   Plus,
   X,
@@ -290,7 +306,7 @@ interface InboxEmail {
 }
 
 interface SelectedView {
-  type: 'category' | 'label' | 'all'
+  type: 'category' | 'label' | 'all' | 'trash'
   id?: number
   data?: InboxCategory | InboxLabel
 }
@@ -319,6 +335,7 @@ const sectionsCollapsed = ref<Record<string, boolean>>({
 const inboxCategories = ref<InboxCategory[]>([])
 const inboxLabels = ref<InboxLabel[]>([])
 const inboxEmails = ref<InboxEmail[]>([])
+const deletedEmailsCount = ref(0)
 const selectedView = ref<SelectedView>({ type: 'all' })
 
 // Label form
@@ -378,6 +395,12 @@ function selectAllView() {
 
 function selectLabelView(label: InboxLabel) {
   const view: SelectedView = { type: 'label', id: label.id, data: label }
+  selectedView.value = view
+  emit('selectInboxView', view)
+}
+
+function selectTrashView() {
+  const view: SelectedView = { type: 'trash' }
   selectedView.value = view
   emit('selectInboxView', view)
 }
@@ -461,6 +484,16 @@ async function fetchInboxEmails() {
   }
 }
 
+async function fetchDeletedEmailsCount() {
+  try {
+    const response = await axios.get('http://localhost:4000/api/inbox/trash?limit=1')
+    deletedEmailsCount.value = response.data.data.pagination.total
+  } catch (error) {
+    console.error('Error fetching deleted emails count:', error)
+    deletedEmailsCount.value = 0
+  }
+}
+
 async function handleLogout() {
   authStore.logout()
   router.push('/login')
@@ -469,7 +502,10 @@ async function handleLogout() {
 // Expose refresh method for parent components
 defineExpose({
   refreshInboxData: async () => {
-    await fetchInboxEmails()
+    await Promise.all([
+      fetchInboxEmails(),
+      fetchDeletedEmailsCount()
+    ])
   }
 })
 
@@ -478,7 +514,8 @@ onMounted(async () => {
   await Promise.all([
     fetchInboxCategories(),
     fetchInboxLabels(),
-    fetchInboxEmails()
+    fetchInboxEmails(),
+    fetchDeletedEmailsCount()
   ])
   
   // Load legacy sent messages
@@ -486,7 +523,8 @@ onMounted(async () => {
   
   // Close user menu when clicking outside
   document.addEventListener('click', (e) => {
-    if (!e.target?.closest('.user-menu')) {
+    const target = e.target as HTMLElement
+    if (!target?.closest('.user-menu')) {
       showUserMenu.value = false
     }
   })
@@ -1152,5 +1190,53 @@ onMounted(async () => {
   .color-input {
     width: 100%;
   }
+}
+/* Trash section styles */
+.trash-section {
+  margin-top: auto;
+  border-top: 1px solid #e0e0e0;
+  padding-top: 1rem;
+}
+
+.trash-header {
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin: 0 0.5rem;
+  transition: all 0.2s;
+}
+
+.trash-header:hover {
+  background: #ffeaea;
+  color: #dc3545;
+}
+
+.trash-header.active {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: white;
+  font-weight: 600;
+}
+
+.trash-icon {
+  color: #dc3545;
+}
+
+.trash-header.active .trash-icon {
+  color: white;
+}
+
+.trash-badge {
+  background: #dc3545;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  min-width: 1.5rem;
+  text-align: center;
+  margin-left: auto;
+}
+
+.trash-header.active .trash-badge {
+  background: rgba(255, 255, 255, 0.2);
 }
 </style>

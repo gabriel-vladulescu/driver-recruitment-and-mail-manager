@@ -147,13 +147,17 @@ export const useMessagesStore = defineStore('messages', () => {
     }
   }
 
-  function selectMessage(message: Message) {
+  function selectMessage(message: Message | null) {
     selectedMessage.value = message
     selectedSentMessage.value = null // Clear sent message selection
-    fetchMessageDetails(message.id)
+    if (message) {
+      fetchMessageDetails(message.id)
+    } else {
+      selectedMessageDetails.value = null
+    }
   }
 
-  function selectSentMessage(sentMessage: SentMessage) {
+  function selectSentMessage(sentMessage: SentMessage | null) {
     selectedSentMessage.value = sentMessage
     selectedMessage.value = null // Clear regular message selection
     selectedMessageDetails.value = null

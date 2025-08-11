@@ -17,7 +17,8 @@
       "Bash(npm init:*)",
       "Bash(npm run:*)",
       "Bash(taskkill:*)",
-      "Bash(wmic process where:*)"
+      "Bash(wmic process where:*)",
+      "Bash(npm start)"
     ],
     "deny": []
   }

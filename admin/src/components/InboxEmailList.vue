@@ -7,6 +7,7 @@
           <Mail v-if="view.type === 'category' && view.data?.category === 'EMAILS_RECEIVED'" />
           <Send v-else-if="view.type === 'category' && view.data?.category === 'EMAILS_SENT'" />
           <Tag v-else-if="view.type === 'label'" />
+          <Trash2 v-else-if="view.type === 'trash'" />
           <Inbox v-else />
         </div>
         <div class="header-text">
@@ -16,18 +17,42 @@
       </div>
       
       <div class="header-actions">
-        <button @click="fetchEmails" class="refresh-btn" :disabled="loading">
-          <RefreshCw class="refresh-icon" :class="{ spinning: loading }" />
-        </button>
-        <button 
-          v-if="view.type === 'category' && view.data?.category === 'EMAILS_RECEIVED'"
-          @click="fetchEmailsFromServer" 
-          class="fetch-btn"
-          :disabled="fetchingFromServer"
-        >
-          <Download class="download-icon" />
-          {{ fetchingFromServer ? 'Preluare...' : 'Preia Email-uri' }}
-        </button>
+        <template v-if="view.type === 'trash'">
+          <!-- Trash bulk actions -->
+          <button @click="fetchEmails" class="refresh-btn" :disabled="loading">
+            <RefreshCw class="refresh-icon" :class="{ spinning: loading }" />
+          </button>
+          <button 
+            @click="toggleSelectAll" 
+            class="select-all-btn"
+            :disabled="emails.length === 0"
+          >
+            {{ selectedEmailIds.length === emails.length && emails.length > 0 ? 'Deselectează tot' : 'Selectează tot' }}
+          </button>
+          <button 
+            @click="bulkPermanentlyDelete" 
+            class="bulk-delete-btn"
+            :disabled="selectedEmailIds.length === 0"
+          >
+            <Trash2 class="delete-icon" />
+            Șterge selectate ({{ selectedEmailIds.length }})
+          </button>
+        </template>
+        <template v-else>
+          <!-- Normal actions -->
+          <button @click="fetchEmails" class="refresh-btn" :disabled="loading">
+            <RefreshCw class="refresh-icon" :class="{ spinning: loading }" />
+          </button>
+          <button 
+            v-if="view.type === 'category' && view.data?.category === 'EMAILS_RECEIVED'"
+            @click="fetchEmailsFromServer" 
+            class="fetch-btn"
+            :disabled="fetchingFromServer"
+          >
+            <Download class="download-icon" />
+            {{ fetchingFromServer ? 'Preluare...' : 'Preia Email-uri' }}
+          </button>
+        </template>
       </div>
     </div>
 
@@ -85,10 +110,12 @@
         <div class="email-content">
           <div class="email-header">
             <div class="sender-info">
-              <span class="sender-name">{{ email.email_from_name || email.email_from }}</span>
-              <span class="sender-email">{{ email.email_from }}</span>
+              <span class="sender-name">{{ formatSenderName(email) }}</span>
             </div>
             <div class="email-meta">
+              <div class="inbox-type-badge" v-if="email.inboxType">
+                <span class="inbox-type-text">{{ formatInboxType(email.inboxType.type) }}</span>
+              </div>
               <span class="email-date">{{ formatDate(email.createdAt) }}</span>
               <div v-if="email.inboxLabel" class="email-label">
                 <div 
@@ -107,21 +134,48 @@
         </div>
         
         <div class="email-actions">
-          <button 
-            @click.stop="toggleReadStatus(email)" 
-            class="action-btn"
-            :title="email.is_read ? 'Marchează ca necitit' : 'Marchează ca citit'"
-          >
-            <MailOpen v-if="email.is_read" class="action-icon" />
-            <Mail v-else class="action-icon" />
-          </button>
-          <button 
-            @click.stop="showLabelModal(email)" 
-            class="action-btn"
-            title="Setează etichetă"
-          >
-            <Tag class="action-icon" />
-          </button>
+          <template v-if="view.type === 'trash'">
+            <!-- Trash-specific actions -->
+            <input 
+              type="checkbox" 
+              :checked="selectedEmailIds.includes(email.id)"
+              @click.stop
+              @change="toggleEmailSelection(email.id)"
+              class="email-checkbox"
+            />
+            <button 
+              @click.stop="restoreEmail(email)" 
+              class="action-btn restore-btn"
+              title="Restaurează email-ul"
+            >
+              <RotateCcw class="action-icon" />
+            </button>
+            <button 
+              @click.stop="permanentlyDeleteEmail(email)" 
+              class="action-btn delete-btn"
+              title="Șterge definitiv"
+            >
+              <Trash2 class="action-icon" />
+            </button>
+          </template>
+          <template v-else>
+            <!-- Normal email actions -->
+            <button 
+              @click.stop="toggleReadStatus(email)" 
+              class="action-btn"
+              :title="email.is_read ? 'Marchează ca necitit' : 'Marchează ca citit'"
+            >
+              <MailOpen v-if="email.is_read" class="action-icon" />
+              <Mail v-else class="action-icon" />
+            </button>
+            <button 
+              @click.stop="showLabelModal(email)" 
+              class="action-btn"
+              title="Setează etichetă"
+            >
+              <Tag class="action-icon" />
+            </button>
+          </template>
         </div>
       </div>
     </div>
@@ -202,13 +256,13 @@ import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import {
   Mail, Send, Tag, Inbox, RefreshCw, Download, Search, X, Loader, AlertCircle,
-  MailOpen, ChevronLeft, ChevronRight, Briefcase, Bookmark, Star, Heart, Flag, Archive
+  MailOpen, ChevronLeft, ChevronRight, Briefcase, Bookmark, Star, Heart, Flag, Archive, Trash2, RotateCcw
 } from 'lucide-vue-next'
 
 // Props
 interface Props {
   view: {
-    type: 'category' | 'label' | 'all'
+    type: 'category' | 'label' | 'all' | 'trash'
     id?: number
     data?: any
   }
@@ -232,6 +286,7 @@ const error = ref('')
 const searchQuery = ref('')
 const currentPage = ref(1)
 const totalPages = ref(1)
+const selectedEmailIds = ref<number[]>([])  // For bulk selection in trash
 const pageSize = 20
 const selectedEmailId = ref<number | null>(null)
 const fetchingFromServer = ref(false)
@@ -248,6 +303,8 @@ const getViewTitle = () => {
     return props.view.data?.name || 'Categorie'
   } else if (props.view.type === 'label') {
     return props.view.data?.label || 'Etichetă'
+  } else if (props.view.type === 'trash') {
+    return 'Coș de gunoi'
   }
   return 'Email-uri'
 }
@@ -260,12 +317,18 @@ const fetchEmails = async () => {
   error.value = ''
   
   try {
-    let url = `http://localhost:4000/api/inbox/emails?page=${currentPage.value}&limit=${pageSize}`
+    let url
     
-    if (props.view.type === 'category' && props.view.data) {
-      url += `&category=${props.view.data.category}`
-    } else if (props.view.type === 'label' && props.view.id) {
-      url += `&label=${props.view.id}`
+    if (props.view.type === 'trash') {
+      url = `http://localhost:4000/api/inbox/trash?page=${currentPage.value}&limit=${pageSize}`
+    } else {
+      url = `http://localhost:4000/api/inbox/emails?page=${currentPage.value}&limit=${pageSize}`
+      
+      if (props.view.type === 'category' && props.view.data) {
+        url += `&category=${props.view.data.category}`
+      } else if (props.view.type === 'label' && props.view.id) {
+        url += `&label=${props.view.id}`
+      }
     }
     
     if (searchQuery.value) {
@@ -421,6 +484,27 @@ const getEmailPreview = (htmlContent: string) => {
   return text.length > 100 ? text.substring(0, 100) + '...' : text
 }
 
+const formatSenderName = (email: any) => {
+  const name = email.email_from_name?.trim()
+  const emailAddress = email.email_from?.trim()
+  
+  if (name && name !== emailAddress) {
+    return `${name} <${emailAddress}>`
+  }
+  return emailAddress
+}
+
+const formatInboxType = (type: string) => {
+  switch (type) {
+    case 'INTERNAL_INBOX':
+      return 'Email'
+    case 'EXTERNAL_FORMS':
+      return 'Formular'
+    default:
+      return type
+  }
+}
+
 const debouncedSearch = (() => {
   let timeout: NodeJS.Timeout
   return () => {
@@ -452,10 +536,108 @@ const nextPage = () => {
   }
 }
 
+// Trash-specific functions
+const toggleEmailSelection = (emailId: number) => {
+  const index = selectedEmailIds.value.indexOf(emailId)
+  if (index > -1) {
+    selectedEmailIds.value.splice(index, 1)
+  } else {
+    selectedEmailIds.value.push(emailId)
+  }
+}
+
+const toggleSelectAll = () => {
+  if (selectedEmailIds.value.length === emails.value.length && emails.value.length > 0) {
+    // Deselect all
+    selectedEmailIds.value = []
+  } else {
+    // Select all
+    selectedEmailIds.value = emails.value.map(email => email.id)
+  }
+}
+
+const restoreEmail = async (email: any) => {
+  try {
+    await axios.post(`http://localhost:4000/api/inbox/emails/${email.id}/restore`)
+    
+    // Remove from current list
+    const index = emails.value.findIndex(e => e.id === email.id)
+    if (index > -1) {
+      emails.value.splice(index, 1)
+    }
+    
+    // Remove from selection if selected
+    const selectionIndex = selectedEmailIds.value.indexOf(email.id)
+    if (selectionIndex > -1) {
+      selectedEmailIds.value.splice(selectionIndex, 1)
+    }
+    
+    emit('emailUpdated')
+  } catch (error: any) {
+    console.error('Error restoring email:', error)
+    alert(error.response?.data?.message || 'Eroare la restaurarea email-ului')
+  }
+}
+
+const permanentlyDeleteEmail = async (email: any) => {
+  if (!confirm('Sigur vrei să ștergi definitiv acest email? Această acțiune nu poate fi anulată.')) {
+    return
+  }
+  
+  try {
+    await axios.delete(`http://localhost:4000/api/inbox/emails/${email.id}/permanent`)
+    
+    // Remove from current list
+    const index = emails.value.findIndex(e => e.id === email.id)
+    if (index > -1) {
+      emails.value.splice(index, 1)
+    }
+    
+    // Remove from selection if selected
+    const selectionIndex = selectedEmailIds.value.indexOf(email.id)
+    if (selectionIndex > -1) {
+      selectedEmailIds.value.splice(selectionIndex, 1)
+    }
+    
+    emit('emailUpdated')
+  } catch (error: any) {
+    console.error('Error permanently deleting email:', error)
+    alert(error.response?.data?.message || 'Eroare la ștergerea definitivă')
+  }
+}
+
+const bulkPermanentlyDelete = async () => {
+  if (selectedEmailIds.value.length === 0) {
+    alert('Nu ai selectat niciun email.')
+    return
+  }
+  
+  if (!confirm(`Sigur vrei să ștergi definitiv ${selectedEmailIds.value.length} email${selectedEmailIds.value.length > 1 ? '-uri' : ''}? Această acțiune nu poate fi anulată.`)) {
+    return
+  }
+  
+  try {
+    // Delete emails one by one
+    for (const emailId of selectedEmailIds.value) {
+      await axios.delete(`http://localhost:4000/api/inbox/emails/${emailId}/permanent`)
+    }
+    
+    // Remove all selected emails from list
+    emails.value = emails.value.filter(email => !selectedEmailIds.value.includes(email.id))
+    selectedEmailIds.value = []
+    
+    emit('emailUpdated')
+  } catch (error: any) {
+    console.error('Error bulk deleting emails:', error)
+    alert(error.response?.data?.message || 'Eroare la ștergerea în bloc')
+  }
+}
+
 // Watchers
 watch(() => props.view, () => {
   currentPage.value = 1
   selectedEmailId.value = null
+  selectedEmailIds.value = []  // Reset bulk selection
   fetchEmails()
 }, { deep: true })
 
@@ -1046,6 +1228,131 @@ onMounted(() => {
   .email-actions {
     opacity: 1;
     margin-left: 0.5rem;
+  }
+}
+/* Inbox type badge styles */
+.inbox-type-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 0.5rem;
+}
+
+.inbox-type-text {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.inbox-type-text {
+  background: linear-gradient(135deg, #34d186 0%, #28a745 100%);
+  color: white;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .inbox-type-badge {
+    margin-right: 0.3rem;
+  }
+  
+  .inbox-type-text {
+    font-size: 0.6rem;
+    padding: 0.1rem 0.4rem;
+  }
+}
+
+/* Trash-specific styles */
+.email-checkbox {
+  margin-right: 0.5rem;
+  transform: scale(1.1);
+  cursor: pointer;
+}
+
+.restore-btn {
+  background: linear-gradient(135deg, #28a745 0%, #34d186 100%);
+  color: white;
+}
+
+.restore-btn:hover {
+  background: linear-gradient(135deg, #218838 0%, #2e9c71 100%);
+  transform: translateY(-1px);
+}
+
+.delete-btn {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: white;
+}
+
+.delete-btn:hover {
+  background: linear-gradient(135deg, #c82333 0%, #a71e2a 100%);
+  transform: translateY(-1px);
+}
+
+.select-all-btn {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  color: #495057;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.select-all-btn:hover:not(:disabled) {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.select-all-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bulk-delete-btn {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bulk-delete-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #c82333 0%, #a71e2a 100%);
+  transform: translateY(-1px);
+}
+
+.bulk-delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.delete-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* Email items in trash view */
+.emails-container .email-item .email-actions {
+  min-width: 120px; /* More space for trash actions */
+}
+
+@media (max-width: 768px) {
+  .select-all-btn, .bulk-delete-btn {
+    font-size: 0.75rem;
+    padding: 0.4rem 0.8rem;
+  }
+  
+  .bulk-delete-btn {
+    gap: 0.3rem;
   }
 }
 </style>
