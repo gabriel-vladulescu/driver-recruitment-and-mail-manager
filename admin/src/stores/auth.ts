@@ -1,0 +1,95 @@
+import { ref, computed } from 'vue'
+import { defineStore } from 'pinia'
+import axios from 'axios'
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000'
+
+export interface User {
+  id: string
+  email: string
+}
+
+export const useAuthStore = defineStore('auth', () => {
+  const user = ref<User | null>(null)
+  const token = ref<string | null>(localStorage.getItem('admin_token'))
+
+  const isAuthenticated = computed(() => !!token.value && !!user.value)
+
+  // Configure axios defaults
+  if (token.value) {
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
+  }
+
+  async function login(email: string, password: string) {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+        email,
+        password
+      })
+
+      if (response.data.success) {
+        token.value = response.data.data.token
+        user.value = response.data.data.user
+        
+        if (token.value) {
+          localStorage.setItem('admin_token', token.value)
+          axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
+        }
+        
+        return { success: true }
+      } else {
+        return { success: false, message: response.data.message }
+      }
+    } catch (error: any) {
+      console.error('Login error:', error)
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Eroare de conexiune' 
+      }
+    }
+  }
+
+  function logout() {
+    user.value = null
+    token.value = null
+    localStorage.removeItem('admin_token')
+    delete axios.defaults.headers.common['Authorization']
+  }
+
+  // Check if token is still valid on app load
+  async function validateToken() {
+    if (!token.value) return false
+
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/auth/me`)
+      if (response.data.success) {
+        user.value = response.data.data
+        return true
+      } else {
+        logout()
+        return false
+      }
+    } catch (error) {
+      logout()
+      return false
+    }
+  }
+
+  // Initialize auth state on app load
+  async function initializeAuth() {
+    if (token.value) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
+      await validateToken()
+    }
+  }
+
+  return {
+    user: computed(() => user.value),
+    token: computed(() => token.value),
+    isAuthenticated,
+    login,
+    logout,
+    validateToken,
+    initializeAuth
+  }
+})

@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "Bash(npm init vue:*)",
+      "Bash(mv:*)",
+      "Bash(true)",
+      "Bash(rmdir:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(npm run dev:*)",
+      "Bash(node server.js)",
+      "Bash(curl:*)",
+      "Bash(del \"src\\views\\AboutView.vue\" \"src\\views\\HomeView.vue\")",
+      "Bash(rm:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm init:*)",
+      "Bash(npm run:*)",
+      "Bash(taskkill:*)",
+      "Bash(wmic process where:*)"
+    ],
+    "deny": []
+  }
+}

@@ -1,0 +1,435 @@
+<template>
+  <div class="login-page">
+    <div class="login-container">
+      <div class="login-card">
+        <div class="login-header">
+          <div class="logo">
+            <div class="logo-icon">
+              <Shield class="icon" />
+            </div>
+            <div class="logo-text">
+              <h1>Bloom Admin</h1>
+              <p>Panoul de administrare</p>
+            </div>
+          </div>
+        </div>
+
+        <form @submit.prevent="handleLogin" class="login-form">
+          <div class="form-group">
+            <label for="email">Email</label>
+            <div class="input-wrapper">
+              <Mail class="input-icon" />
+              <input
+                type="email"
+                id="email"
+                v-model="form.email"
+                placeholder="admin@bloom.ro"
+                required
+                :disabled="isLoading"
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Parolă</label>
+            <div class="input-wrapper">
+              <Lock class="input-icon" />
+              <input
+                :type="showPassword ? 'text' : 'password'"
+                id="password"
+                v-model="form.password"
+                placeholder="••••••••"
+                required
+                :disabled="isLoading"
+              />
+              <button
+                type="button"
+                @click="showPassword = !showPassword"
+                class="password-toggle"
+                :disabled="isLoading"
+              >
+                <Eye v-if="showPassword" class="icon" />
+                <EyeOff v-else class="icon" />
+              </button>
+            </div>
+          </div>
+
+          <div v-if="errorMessage" class="error-message">
+            <AlertCircle class="error-icon" />
+            <span>{{ errorMessage }}</span>
+          </div>
+
+          <button type="submit" class="login-btn" :disabled="isLoading">
+            <Loader v-if="isLoading" class="btn-icon spinning" />
+            <LogIn v-else class="btn-icon" />
+            {{ isLoading ? 'Se conectează...' : 'Conectare' }}
+          </button>
+        </form>
+
+        <div class="login-footer">
+          <p class="demo-credentials">
+            <Info class="info-icon" />
+            Demo: admin@bloom.ro / admin123
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import {
+  Shield,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  Loader,
+  LogIn,
+  Info
+} from 'lucide-vue-next'
+
+const router = useRouter()
+const authStore = useAuthStore()
+
+const form = ref({
+  email: '',
+  password: ''
+})
+
+const showPassword = ref(false)
+const isLoading = ref(false)
+const errorMessage = ref('')
+
+async function handleLogin() {
+  if (!form.value.email || !form.value.password) {
+    errorMessage.value = 'Vă rugăm completați toate câmpurile'
+    return
+  }
+
+  isLoading.value = true
+  errorMessage.value = ''
+
+  try {
+    const result = await authStore.login(form.value.email, form.value.password)
+    
+    if (result.success) {
+      router.push('/dashboard')
+    } else {
+      errorMessage.value = result.message || 'Eroare la conectare'
+    }
+  } catch (error) {
+    errorMessage.value = 'Eroare de conexiune'
+    console.error('Login error:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+</script>
+
+<style scoped>
+.login-page {
+  height: 100vh;
+  width: 100%;
+  background: linear-gradient(135deg, #34d186 0%, #28a745 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-page::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  animation: float 20s ease-in-out infinite;
+}
+
+.login-page::after {
+  content: '';
+  position: absolute;
+  bottom: -30%;
+  left: -30%;
+  width: 150%;
+  height: 150%;
+  background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+  animation: float 25s ease-in-out infinite reverse;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(5deg); }
+}
+
+.login-container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 450px;
+}
+
+.login-card {
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+.login-header {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  padding: 2.5rem;
+  text-align: center;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logo-icon {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #34d186 0%, #28a745 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 25px rgba(52, 209, 134, 0.3);
+}
+
+.logo-icon .icon {
+  width: 40px;
+  height: 40px;
+  color: white;
+}
+
+.logo-text h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 0.25rem;
+}
+
+.logo-text p {
+  margin: 0;
+  color: #666;
+  font-size: 1rem;
+}
+
+.login-form {
+  padding: 2.5rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  font-size: 1rem;
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-wrapper input {
+  width: 100%;
+  padding: 16px 48px 16px 48px;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: all 0.3s;
+  background: #fafafa;
+}
+
+.input-wrapper input:focus {
+  outline: none;
+  border-color: #34d186;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(52, 209, 134, 0.1);
+}
+
+.input-wrapper input:disabled {
+  background: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.input-icon {
+  position: absolute;
+  left: 16px;
+  width: 20px;
+  height: 20px;
+  color: #666;
+  z-index: 1;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.password-toggle:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.password-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.password-toggle .icon {
+  width: 20px;
+  height: 20px;
+  color: #666;
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #f8d7da 0%, #f1b0b7 100%);
+  color: #721c24;
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+  border: 1px solid #f5c6cb;
+}
+
+.error-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.login-btn {
+  width: 100%;
+  background: linear-gradient(45deg, #34d186 0%, #28a745 100%);
+  color: white;
+  border: none;
+  padding: 16px 24px;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 12px rgba(52, 209, 134, 0.3);
+}
+
+.login-btn:hover:not(:disabled) {
+  background: linear-gradient(45deg, #28a745 0%, #34d186 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(52, 209, 134, 0.4);
+}
+
+.login-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.login-footer {
+  background: #f8f9fa;
+  padding: 1.5rem 2.5rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.demo-credentials {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.9rem;
+  color: #666;
+  text-align: center;
+  justify-content: center;
+}
+
+.info-icon {
+  width: 16px;
+  height: 16px;
+  color: #34d186;
+}
+
+@media (max-width: 480px) {
+  .login-page {
+    padding: 1rem;
+  }
+
+  .login-header {
+    padding: 2rem;
+  }
+
+  .login-form {
+    padding: 2rem;
+  }
+
+  .login-footer {
+    padding: 1.5rem 2rem;
+  }
+
+  .logo-icon {
+    width: 70px;
+    height: 70px;
+  }
+
+  .logo-icon .icon {
+    width: 35px;
+    height: 35px;
+  }
+
+  .logo-text h1 {
+    font-size: 1.6rem;
+  }
+
+  .input-wrapper input {
+    padding: 14px 44px 14px 44px;
+  }
+}
+</style>
