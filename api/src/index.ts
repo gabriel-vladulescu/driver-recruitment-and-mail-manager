@@ -7,6 +7,7 @@ import sequelize from './config/database';
 import authRoutes from './routes/auth';
 import formsRoutes from './routes/forms';
 import emailRoutes from './routes/email';
+import inboxRoutes from './routes/inbox';
 
 // Load environment variables
 dotenv.config();
@@ -60,6 +61,7 @@ app.use((req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/forms', formsRoutes);
 app.use('/api/email', emailRoutes);
+app.use('/api/inbox', inboxRoutes);
 
 // Legacy routes for backward compatibility with admin panel
 app.use('/login', authRoutes);

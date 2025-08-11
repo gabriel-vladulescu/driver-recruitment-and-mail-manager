@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import sequelize from '../config/database';
-import { User } from '../models';
+import { User, InboxType, InboxCategory, InboxLabel } from '../models';
 
 // Load environment variables
 dotenv.config();
@@ -26,6 +26,40 @@ async function seedDatabase() {
     console.log('✅ Admin user created successfully');
     console.log(`   Email: ${adminEmail}`);
     console.log(`   ID: ${adminUser.id}`);
+
+    // Seed inbox types
+    const inboxTypes = [
+      { icon: 'MailBox', type: 'INTERNAL_INBOX' },
+      { icon: 'Mail', type: 'EXTERNAL_FORMS' }
+    ];
+
+    for (const typeData of inboxTypes) {
+      await InboxType.create(typeData);
+    }
+    console.log('✅ Inbox types created successfully');
+
+    // Seed inbox categories  
+    const inboxCategories = [
+      { category: 'EMAILS_RECEIVED', name: 'Mesaje Primite' },
+      { category: 'EMAILS_SENT', name: 'Trimise' }
+    ];
+
+    for (const categoryData of inboxCategories) {
+      await InboxCategory.create(categoryData);
+    }
+    console.log('✅ Inbox categories created successfully');
+
+    // Seed default labels
+    const defaultLabels = [
+      { label: 'Business', color: '#1f2937', icon: 'Briefcase' },
+      { label: 'Salvate', color: '#059669', icon: 'Bookmark' },
+      { label: 'Arhivate', color: '#6b7280', icon: 'Archive' }
+    ];
+
+    for (const labelData of defaultLabels) {
+      await InboxLabel.create(labelData);
+    }
+    console.log('✅ Default labels created successfully');
 
     console.log('\n🎉 Database seeding completed successfully!');
     console.log('\n📋 Admin Login Credentials:');

@@ -2,6 +2,10 @@ import sequelize from '../config/database';
 import User from './User';
 import FormSubmission from './FormSubmission';
 import SentReply from './SentReply';
+import InboxType from './InboxType';
+import InboxCategory from './InboxCategory';
+import InboxLabel from './InboxLabel';
+import InboxEmail from './InboxEmail';
 
 // Define associations here if needed
 // User.hasMany(FormSubmission, { foreignKey: 'created_by' });
@@ -19,6 +23,10 @@ export {
   User,
   FormSubmission,
   SentReply,
+  InboxType,
+  InboxCategory,
+  InboxLabel,
+  InboxEmail,
 };
 
 // Function to sync database

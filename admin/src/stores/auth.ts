@@ -16,9 +16,15 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!token.value && !!user.value)
 
   // Configure axios defaults
-  if (token.value) {
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
+  const configureAxios = () => {
+    if (token.value) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
+    } else {
+      delete axios.defaults.headers.common['Authorization']
+    }
   }
+  
+  configureAxios()
 
   async function login(email: string, password: string) {
     try {
@@ -33,7 +39,7 @@ export const useAuthStore = defineStore('auth', () => {
         
         if (token.value) {
           localStorage.setItem('admin_token', token.value)
-          axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
+          configureAxios()
         }
         
         return { success: true }
@@ -53,7 +59,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     token.value = null
     localStorage.removeItem('admin_token')
-    delete axios.defaults.headers.common['Authorization']
+    configureAxios()
   }
 
   // Check if token is still valid on app load
@@ -78,7 +84,7 @@ export const useAuthStore = defineStore('auth', () => {
   // Initialize auth state on app load
   async function initializeAuth() {
     if (token.value) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
+      configureAxios()
       await validateToken()
     }
   }
