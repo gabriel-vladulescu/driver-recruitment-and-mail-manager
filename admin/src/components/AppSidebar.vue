@@ -270,7 +270,8 @@ import {
   Heart,
   Flag,
   Edit,
-  AlertTriangle
+  AlertTriangle,
+  Trash
 } from 'lucide-vue-next'
 import SettingsModal from './SettingsModal.vue'
 

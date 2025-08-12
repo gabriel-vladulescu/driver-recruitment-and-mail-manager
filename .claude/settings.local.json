@@ -22,7 +22,9 @@
       "Bash(ts-node:*)",
       "Bash(npx ts-node:*)",
       "Bash(cmd /c:*)",
-      "Bash(PORT=4001 npm run dev)"
+      "Bash(PORT=4001 npm run dev)",
+      "Bash(git rm:*)",
+      "Bash(git commit:*)"
     ],
     "deny": []
   }
