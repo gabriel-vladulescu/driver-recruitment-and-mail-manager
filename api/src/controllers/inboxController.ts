@@ -336,6 +336,9 @@ export const getCategories = async (req: Request, res: Response) => {
       order: [['name', 'ASC']]
     });
 
+    console.log('📂 Categories found:', categories.length);
+    console.log('📂 Categories data:', categories.map(c => ({ id: c.id, category: c.category, name: c.name })));
+
     res.json({
       success: true,
       data: categories

@@ -342,10 +342,20 @@ export default {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            type: this.formType,
+            mapping: {
+              emailFromProperty: 'email',
+              emailFromName: 'name', // We'll combine firstName + lastName
+              emailTo: 'admin'
+            },
             formData: {
-              ...this.contactForm,
-              source: window.location.pathname
+              type: this.formType,
+              name: `${this.contactForm.firstName} ${this.contactForm.lastName}`.trim(),
+              email: this.contactForm.email,
+              phone: this.contactForm.phone,
+              subject: this.contactForm.subject,
+              message: this.contactForm.message,
+              source: window.location.pathname,
+              acceptTerms: this.contactForm.acceptTerms
             }
           }),
         });

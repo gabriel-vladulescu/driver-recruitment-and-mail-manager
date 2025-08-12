@@ -12,7 +12,7 @@
         v-if="selectedInboxEmail"
         :email="selectedInboxEmail"
         :view="selectedInboxView"
-        @email-updated="handleEmailUpdated"
+        @emailUpdated="handleEmailUpdated"
         @email-deleted="handleEmailDeleted"
         @back-to-list="handleBackToList"
       />
@@ -21,7 +21,7 @@
         ref="emailListRef"
         :view="selectedInboxView"
         @select-email="handleSelectEmail"
-        @email-updated="handleEmailUpdated"
+        @emailUpdated="handleEmailUpdated"
         @fetch-started="startEmailFetch"
         @fetch-progress="updateEmailFetchProgress"
         @fetch-ended="endEmailFetch"
@@ -123,6 +123,9 @@ function handleBackToList() {
 }
 
 async function handleEmailUpdated() {
+  // Small delay to ensure database transaction is committed
+  await new Promise(resolve => setTimeout(resolve, 100))
+  
   // Trigger refresh of sidebar inbox counts
   if (sidebarRef.value) {
     await sidebarRef.value.refreshInboxData()

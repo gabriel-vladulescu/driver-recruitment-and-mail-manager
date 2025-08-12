@@ -53,6 +53,15 @@
             <template v-else>
               <!-- Normal email actions -->
               <button 
+                @click="showReplyModal = true" 
+                class="action-btn primary"
+                title="Răspunde la email"
+              >
+                <Reply class="action-icon" />
+                Răspunde
+              </button>
+              
+              <button 
                 @click="toggleReadStatus" 
                 class="action-btn"
                 :title="email.is_read ? 'Marchează ca necitit' : 'Marchează ca citit'"
@@ -103,7 +112,30 @@
 
       <!-- Email Content -->
       <div class="email-content">
-        <div class="email-body" v-html="sanitizeHtml(email.message)"></div>
+        <!-- Regular email message -->
+        <div v-if="!isExternalForm" class="email-body" v-html="sanitizeHtml(email.message)"></div>
+        
+        <!-- External form data (for inbox_type_id = 2) -->
+        <div v-else class="external-form-content">
+          <div class="form-header">
+            <h3>{{ getFormTypeLabel() }}</h3>
+            <div class="form-badge">{{ getFormTypeBadge() }}</div>
+          </div>
+          
+          <div class="form-fields">
+            <div v-for="(value, key) in getFormFields()" :key="key" class="form-field">
+              <div class="field-label">{{ formatFieldLabel(key) }}</div>
+              <div class="field-value">{{ formatFieldValue(value) }}</div>
+            </div>
+          </div>
+          
+          <div v-if="email.message && email.message !== 'Mesaj de contact'" class="original-message">
+            <div class="message-header">
+              <h4>Mesaj Original</h4>
+            </div>
+            <div class="message-content" v-html="sanitizeHtml(email.message)"></div>
+          </div>
+        </div>
         
         <!-- Attachments (if any) -->
         <div v-if="hasAttachments" class="attachments-section">
@@ -179,7 +211,8 @@ import axios from 'axios'
 import DOMPurify from 'dompurify'
 import {
   Mail, MailOpen, Tag, Trash2, X, Paperclip, Calendar, User,
-  Briefcase, Bookmark, Star, Heart, Flag, Archive, RotateCcw, ArrowLeft
+  Briefcase, Bookmark, Star, Heart, Flag, Archive, RotateCcw, ArrowLeft,
+  MessageSquare, Phone, MapPin, Clock, Car, FileText
 } from 'lucide-vue-next'
 
 // Props
@@ -209,6 +242,10 @@ const availableLabels = ref<any[]>([])
 // Computed
 const hasAttachments = computed(() => {
   return props.email?.custom_data?.attachments?.length > 0
+})
+
+const isExternalForm = computed(() => {
+  return props.email?.inboxType?.id === 2 || (props.email?.inbox_type_id === 2)
 })
 
 // Methods
@@ -264,6 +301,99 @@ const formatFileSize = (bytes: number) => {
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
+// Form submission methods
+const getFormTypeLabel = () => {
+  const type = props.email?.custom_data?.type || props.email?.custom_data?.formData?.type
+  const labels = {
+    'TYPE_CONTACT': 'Formular de Contact',
+    'TYPE_RECRUITMENT': 'Aplicație pentru Șofer',
+    'TYPE_EXTERNAL_CAR_RENT': 'Cerere Închiriere Auto'
+  }
+  return labels[type as keyof typeof labels] || 'Formular'
+}
+
+const getFormTypeBadge = () => {
+  const type = props.email?.custom_data?.type || props.email?.custom_data?.formData?.type
+  const badges = {
+    'TYPE_CONTACT': 'Contact',
+    'TYPE_RECRUITMENT': 'Recrutare',
+    'TYPE_EXTERNAL_CAR_RENT': 'Închiriere'
+  }
+  return badges[type as keyof typeof badges] || 'Formular'
+}
+
+const getFormFields = () => {
+  const formData = props.email?.custom_data?.formData || {}
+  const fieldsToExclude = ['type', 'source', 'acceptTerms']
+  
+  const cleanedData: Record<string, any> = {}
+  
+  Object.keys(formData).forEach(key => {
+    if (!fieldsToExclude.includes(key) && formData[key] && formData[key] !== '') {
+      cleanedData[key] = formData[key]
+    }
+  })
+  
+  return cleanedData
+}
+
+const formatFieldLabel = (key: string) => {
+  const labels: Record<string, string> = {
+    name: 'Nume Complet',
+    firstName: 'Prenume',
+    lastName: 'Nume',
+    email: 'Email',
+    phone: 'Telefon',
+    subject: 'Subiect',
+    message: 'Mesaj',
+    experience: 'Experiență',
+    hasVehicle: 'Are Vehicul',
+    vehicleBrand: 'Marca Vehicul',
+    vehicleYear: 'Anul Vehiculului',
+    vehicleFuel: 'Combustibil',
+    vehicleColor: 'Culoare Vehicul',
+    availability: 'Disponibilitate',
+    preferredSchedule: 'Program Preferat',
+    age: 'Vârsta',
+    rentalPeriod: 'Perioada Închiriere',
+    additionalMessage: 'Mesaj Adițional'
+  }
+  
+  return labels[key] || key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')
+}
+
+const formatFieldValue = (value: any) => {
+  if (typeof value === 'boolean') {
+    return value ? 'Da' : 'Nu'
+  }
+  
+  if (value === 'yes') return 'Da'
+  if (value === 'no') return 'Nu'
+  if (value === 'rental') return 'Doresc închiriere prin Bloom'
+  
+  // Handle specific form values
+  const translations: Record<string, string> = {
+    'imediat': 'Imediat',
+    '1-saptamana': 'În 1 săptămână',
+    '2-saptamani': 'În 2 săptămâni',
+    '1-luna': 'În 1 lună',
+    'mai-mult-de-1-luna': 'Mai mult de 1 lună',
+    'full-time': 'Full-time (8+ ore/zi)',
+    'part-time': 'Part-time (4-6 ore/zi)',
+    'weekend': 'Doar weekend',
+    '2-3-ani': '2-3 ani',
+    '3-5-ani': '3-5 ani',
+    'peste-5-ani': 'Peste 5 ani',
+    'benzina': 'Benzină',
+    'motorina': 'Motorină',
+    'hibrid': 'Hibrid',
+    'electric': 'Electric',
+    'gpl': 'GPL'
+  }
+  
+  return translations[value as string] || value
 }
 
 const toggleReadStatus = async () => {
@@ -659,6 +789,131 @@ watch(() => props.email, (newEmail) => {
   color: #666;
 }
 
+/* Form submission styles */
+.external-form-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, rgba(52, 209, 134, 0.1) 0%, rgba(40, 167, 69, 0.05) 100%);
+  border: 1px solid rgba(52, 209, 134, 0.2);
+  border-radius: 12px;
+  margin-bottom: 1rem;
+}
+
+.form-header h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.form-badge {
+  background: linear-gradient(135deg, #34d186 0%, #28a745 100%);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.form-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.form-field {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1rem;
+  transition: all 0.2s;
+}
+
+.form-field:hover {
+  border-color: rgba(52, 209, 134, 0.3);
+  background: rgba(52, 209, 134, 0.02);
+}
+
+.field-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.field-value {
+  font-size: 1rem;
+  color: #1a1a1a;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.original-message {
+  border-top: 2px solid #e9ecef;
+  padding-top: 2rem;
+}
+
+.message-header {
+  margin-bottom: 1rem;
+}
+
+.message-header h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.message-header h4::before {
+  content: '';
+  width: 4px;
+  height: 20px;
+  background: linear-gradient(135deg, #34d186 0%, #28a745 100%);
+  border-radius: 2px;
+}
+
+.message-content {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1.5rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #1a1a1a;
+}
+
+@media (max-width: 768px) {
+  .form-fields {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .form-header {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+    padding: 1.25rem;
+  }
+  
+  .form-badge {
+    align-self: center;
+  }
+}
+
 /* Modal styles */
 .modal-overlay {
   position: fixed;
@@ -906,6 +1161,10 @@ watch(() => props.email, (newEmail) => {
   
   .header-actions {
     gap: 0.5rem;
+  }
+  
+  .external-form-content {
+    gap: 1.5rem;
   }
 }
 </style>

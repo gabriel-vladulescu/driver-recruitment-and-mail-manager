@@ -29,8 +29,8 @@ async function seedDatabase() {
 
     // Seed inbox types
     const inboxTypes = [
-      { icon: 'MailBox', type: 'INTERNAL_INBOX' },
-      { icon: 'Mail', type: 'EXTERNAL_FORMS' }
+      { name: 'Inbox Intern', type: 'INTERNAL_INBOX' },
+      { name: 'Formulare Externe', type: 'EXTERNAL_FORMS' }
     ];
 
     for (const typeData of inboxTypes) {

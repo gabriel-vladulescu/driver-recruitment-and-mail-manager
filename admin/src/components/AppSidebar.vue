@@ -36,6 +36,7 @@
     <div class="messages-container">
       <!-- Direct Categories -->
       <div v-for="category in inboxCategories" :key="category.id" class="messages-section">
+        <!-- Debug: {{ category.name }} -->
         <div 
           class="category-item" 
           :class="{ 'active': selectedView.type === 'category' && selectedView.id === category.id }"
@@ -121,46 +122,7 @@
         </div>
       </div>
 
-      <!-- Legacy Forms Section (for backward compatibility) -->
-      <div class="messages-section">
-        <div class="section-header" @click="toggleSection('forms')">
-          <div class="section-title">
-            <MessageSquare class="section-icon" />
-            Formulare Contact
-            <span v-if="unreadCount > 0" class="unread-badge">{{ unreadCount }}</span>
-          </div>
-          <ChevronDown 
-            class="toggle-icon" 
-            :class="{ 'rotated': !sectionsCollapsed.forms }"
-          />
-        </div>
-        
-        <div v-if="!sectionsCollapsed.forms" class="messages-list">
-          <div v-if="messagesStore.loading" class="loading-state">
-            <Loader class="loading-icon spinning" />
-            <span>Se încarcă mesajele...</span>
-          </div>
-          
-          <div v-else-if="messagesStore.error" class="error-state">
-            <AlertCircle class="error-icon" />
-            <span>{{ messagesStore.error }}</span>
-          </div>
-          
-          <div v-else-if="activeMessages.length === 0" class="empty-messages">
-            <MessageSquare class="empty-icon" />
-            <span>Nu există formulare</span>
-          </div>
-          
-          <MessageItem
-            v-else
-            v-for="message in activeMessages"
-            :key="message.id"
-            :message="message"
-            :is-selected="selectedMessage?.id === message.id"
-            @click="selectMessage(message)"
-          />
-        </div>
-      </div>
+      <!-- Removed Legacy Forms Section - now using unified Inbox system -->
 
       <!-- Trash Section -->
       <div class="messages-section trash-section">
@@ -251,7 +213,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useMessagesStore, type Message, type SentMessage } from '@/stores/messages'
 import axios from 'axios'
 import {
   Shield,
@@ -277,8 +238,6 @@ import {
   Heart,
   Flag
 } from 'lucide-vue-next'
-import MessageItem from './MessageItem.vue'
-import SentMessageItem from './SentMessageItem.vue'
 import SettingsModal from './SettingsModal.vue'
 
 // Types
@@ -312,14 +271,12 @@ interface SelectedView {
 }
 
 const emit = defineEmits<{
-  selectMessage: [messageId: string]
   selectInboxView: [view: SelectedView]
   refreshNeeded: []
 }>()
 
 const router = useRouter()
 const authStore = useAuthStore()
-const messagesStore = useMessagesStore()
 
 // State
 const showUserMenu = ref(false)
@@ -327,7 +284,6 @@ const showSettings = ref(false)
 const showLabelModal = ref(false)
 const editingLabel = ref<InboxLabel | null>(null)
 const sectionsCollapsed = ref<Record<string, boolean>>({
-  forms: true,
   labels: false
 })
 
@@ -345,28 +301,20 @@ const labelForm = ref({
   icon: 'Tag'
 })
 
-// Legacy data (for backward compatibility)
-const activeMessages = computed(() => messagesStore.activeMessages)
-const archivedMessages = computed(() => messagesStore.archivedMessages)
-const sentMessages = computed(() => messagesStore.sentMessages)
-const selectedMessage = computed(() => messagesStore.selectedMessage)
-const selectedSentMessage = computed(() => messagesStore.selectedSentMessage)
-
-const unreadCount = computed(() => messagesStore.unreadMessages.length)
-const activeCount = computed(() => activeMessages.value.length)
-const archivedCount = computed(() => archivedMessages.value.length)
-const sentCount = computed(() => messagesStore.sentMessagesCount)
+// Legacy message store support removed - now using unified inbox system
 
 // Computed for inbox counts
 const getCategoryCount = (categoryId: number) => {
   return inboxEmails.value.filter(email => email.inbox_category_id === categoryId).length
 }
 
-const getCategoryUnreadCount = (categoryId: number) => {
-  return inboxEmails.value.filter(email => 
-    email.inbox_category_id === categoryId && !email.is_read
-  ).length
-}
+const getCategoryUnreadCount = computed(() => {
+  return (categoryId: number) => {
+    return inboxEmails.value.filter(email => 
+      email.inbox_category_id === categoryId && !email.is_read
+    ).length
+  }
+})
 
 const getLabelCount = (labelId: number) => {
   return inboxEmails.value.filter(email => email.inbox_label_id === labelId).length
@@ -405,14 +353,7 @@ function selectTrashView() {
   emit('selectInboxView', view)
 }
 
-function selectMessage(message: Message) {
-  messagesStore.selectMessage(message)
-  emit('selectMessage', message.id)
-}
-
-function selectSentMessage(sentMessage: SentMessage) {
-  messagesStore.selectSentMessage(sentMessage)
-}
+// Legacy message selection methods removed
 
 function openSettings() {
   showUserMenu.value = false
@@ -478,7 +419,9 @@ async function fetchInboxLabels() {
 async function fetchInboxEmails() {
   try {
     const response = await axios.get('http://localhost:4000/api/inbox/emails?limit=1000')
-    inboxEmails.value = response.data.data.emails
+    
+    // Force Vue reactivity by creating a new array
+    inboxEmails.value = [...response.data.data.emails]
   } catch (error) {
     console.error('Error fetching inbox emails:', error)
   }
@@ -518,8 +461,7 @@ onMounted(async () => {
     fetchDeletedEmailsCount()
   ])
   
-  // Load legacy sent messages
-  messagesStore.fetchSentMessages()
+  // Legacy message store functionality removed
   
   // Close user menu when clicking outside
   document.addEventListener('click', (e) => {

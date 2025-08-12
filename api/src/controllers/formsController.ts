@@ -1,18 +1,48 @@
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
-import { FormSubmission } from '../models';
+import { InboxEmail, InboxType, InboxCategory } from '../models';
 import { ApiResponse } from '../types';
 
 export const getAllForms = async (req: Request, res: Response) => {
   try {
-    const forms = await FormSubmission.findAll({
+    // Get forms from inbox_emails where inbox_category_id = 1 (forms)
+    const forms = await InboxEmail.findAll({
+      where: {
+        inbox_category_id: 1 // Forms category
+      },
+      include: [
+        { model: InboxType, as: 'inboxType' },
+        { model: InboxCategory, as: 'inboxCategory' }
+      ],
       order: [
         ['is_read', 'ASC'], // Unread first
-        ['created_at', 'DESC'] // Newest first
+        ['createdAt', 'DESC'] // Newest first
       ]
     });
 
-    const formattedForms = forms.map(form => form.toApiResponse());
+    const formattedForms = forms.map((form: any) => ({
+      id: form.id,
+      type: (form.custom_data as any)?.type || 'TYPE_CONTACT',
+      subject: form.subject,
+      previewMessage: form.message.length > 100 ? form.message.substring(0, 100) + '...' : form.message,
+      contactEmail: form.email_from,
+      contactPhone: (form.custom_data as any)?.formData?.phone || null,
+      isRead: form.is_read,
+      createdAt: form.createdAt,
+      details: {
+        id: form.id,
+        type: (form.custom_data as any)?.type || 'TYPE_CONTACT',
+        subject: form.subject,
+        message: form.message,
+        contactEmail: form.email_from,
+        contactName: form.email_from_name,
+        contactPhone: (form.custom_data as any)?.formData?.phone || null,
+        formData: (form.custom_data as any)?.formData || {},
+        isRead: form.is_read,
+        createdAt: form.createdAt,
+        updatedAt: form.updatedAt
+      }
+    }));
 
     res.json(formattedForms);
 
@@ -29,7 +59,17 @@ export const getFormById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     
-    const form = await FormSubmission.findByPk(id);
+    const form = await InboxEmail.findOne({
+      where: {
+        id: id,
+        inbox_category_id: 1 // Forms category
+      },
+      include: [
+        { model: InboxType, as: 'inboxType' },
+        { model: InboxCategory, as: 'inboxCategory' }
+      ]
+    });
+    
     if (!form) {
       return res.status(404).json({
         success: false,
@@ -37,8 +77,21 @@ export const getFormById = async (req: Request, res: Response) => {
       } as ApiResponse);
     }
 
-    const response = form.toApiResponse();
-    res.json(response.details);
+    const response = {
+      id: form.id,
+      type: (form.custom_data as any)?.type || 'TYPE_CONTACT',
+      subject: form.subject,
+      message: form.message,
+      contactEmail: form.email_from,
+      contactName: form.email_from_name,
+      contactPhone: (form.custom_data as any)?.formData?.phone || null,
+      formData: (form.custom_data as any)?.formData || {},
+      isRead: form.is_read,
+      createdAt: form.createdAt,
+      updatedAt: form.updatedAt
+    };
+    
+    res.json(response);
 
   } catch (error) {
     console.error('Get form by ID error:', error);
@@ -61,7 +114,13 @@ export const updateReadStatus = async (req: Request, res: Response) => {
       } as ApiResponse);
     }
 
-    const form = await FormSubmission.findByPk(id);
+    const form = await InboxEmail.findOne({
+      where: {
+        id: id,
+        inbox_category_id: 1 // Forms category
+      }
+    });
+    
     if (!form) {
       return res.status(404).json({
         success: false,
@@ -85,6 +144,7 @@ export const updateReadStatus = async (req: Request, res: Response) => {
   }
 };
 
+// Archive functionality replaced with soft delete (trash)
 export const updateArchiveStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -97,7 +157,13 @@ export const updateArchiveStatus = async (req: Request, res: Response) => {
       } as ApiResponse);
     }
 
-    const form = await FormSubmission.findByPk(id);
+    const form = await InboxEmail.findOne({
+      where: {
+        id: id,
+        inbox_category_id: 1 // Forms category
+      }
+    });
+    
     if (!form) {
       return res.status(404).json({
         success: false,
@@ -105,11 +171,20 @@ export const updateArchiveStatus = async (req: Request, res: Response) => {
       } as ApiResponse);
     }
 
-    await form.update({ is_archived: isArchived });
+    if (isArchived) {
+      // Move to trash (soft delete)
+      await form.destroy();
+    } else {
+      // This would be restore from trash, but we handle that separately
+      return res.status(400).json({
+        success: false,
+        message: 'Pentru a restaura folosiți funcția de restore din trash'
+      } as ApiResponse);
+    }
 
     res.json({
       success: true,
-      message: 'Statusul de arhivare a fost actualizat cu succes'
+      message: 'Formularul a fost arhivat (mutat în trash)'
     } as ApiResponse);
 
   } catch (error) {
@@ -123,13 +198,30 @@ export const updateArchiveStatus = async (req: Request, res: Response) => {
 
 export const createForm = async (req: Request, res: Response) => {
   try {
-    const { type, formData } = req.body;
+    const { mapping, formData } = req.body;
 
     // Validate required fields
-    if (!type || !formData) {
+    if (!mapping || !formData) {
       return res.status(400).json({
         success: false,
-        message: 'Tipul și datele formularului sunt obligatorii'
+        message: 'Mapping-ul și datele formularului sunt obligatorii'
+      } as ApiResponse);
+    }
+
+    // Validate mapping structure
+    if (!mapping.emailFromProperty || !mapping.emailFromName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mapping-ul trebuie să conțină emailFromProperty și emailFromName'
+      } as ApiResponse);
+    }
+
+    // Type is now inside formData
+    const type = formData.type;
+    if (!type) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipul formularului este obligatoriu în formData'
       } as ApiResponse);
     }
 
@@ -142,38 +234,62 @@ export const createForm = async (req: Request, res: Response) => {
       } as ApiResponse);
     }
 
-    // Extract contact information
-    const contactEmail = formData.email && formData.email.trim() ? formData.email.trim() : null;
-    const contactPhone = formData.phone && formData.phone.trim() ? formData.phone.trim() : null;
+    // Extract email information based on mapping
+    const emailFrom = formData[mapping.emailFromProperty];
+    const emailFromName = formData[mapping.emailFromName];
+    
+    if (!emailFrom) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email-ul expeditorului este obligatoriu'
+      } as ApiResponse);
+    }
 
-    // Generate subject based on form type
+    // Determine email_to based on mapping
+    let emailTo = 'admin@example.com'; // default
+    if (mapping.emailTo === 'admin') {
+      // Use SMTP username from environment
+      emailTo = process.env.SMTP_USER || 'admin@example.com';
+    } else {
+      emailTo = mapping.emailTo;
+    }
+
+    // Generate subject and message based on form type
     let subject = '';
-    let previewMessage = '';
+    let message = '';
 
     switch (type) {
       case 'TYPE_CONTACT':
         subject = formData.subject || 'Mesaj de contact nou';
-        previewMessage = formData.message?.substring(0, 100) + '...' || 'Mesaj de contact';
+        message = formData.message || 'Mesaj de contact';
         break;
       case 'TYPE_RECRUITMENT':
         subject = 'Aplicație pentru poziția de șofer';
-        previewMessage = `Aplicație nouă de la ${formData.firstName || 'N/A'} ${formData.lastName || ''}`.trim();
+        message = `Aplicație nouă de la ${emailFromName || emailFrom}. Vârsta: ${formData.age || 'N/A'}, Experiență: ${formData.experience || 'N/A'}`;
         break;
       case 'TYPE_EXTERNAL_CAR_RENT':
-        subject = `Cerere închiriere vehicul - ${formData.firstName || 'N/A'} ${formData.lastName || ''}`.trim();
-        previewMessage = formData.additionalMessage?.substring(0, 100) + '...' || 'Cerere de închiriere vehicul';
+        subject = `Cerere închiriere vehicul - ${emailFromName || emailFrom}`;
+        message = formData.additionalMessage || 'Cerere de închiriere vehicul';
         break;
     }
 
-    // Create form submission
-    const form = await FormSubmission.create({
-      type,
-      subject,
-      preview_message: previewMessage,
-      contact_email: contactEmail,
-      contact_phone: contactPhone,
-      form_data: formData
-    });
+    // Create inbox email entry
+    const form = await InboxEmail.create({
+      inbox_type_id: 2, // External forms type
+      inbox_category_id: 1, // Forms category  
+      email_from: emailFrom,
+      email_from_name: emailFromName || emailFrom,
+      email_to: emailTo,
+      email_mail_to: 'Admin',
+      subject: subject,
+      message: message,
+      custom_data: {
+        type: type,
+        formData: formData,
+        mapping: mapping
+      },
+      is_read: false
+    } as any);
 
     res.status(201).json({
       success: true,

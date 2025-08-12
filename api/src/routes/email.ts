@@ -1,7 +1,7 @@
 import express from 'express';
 import emailService from '../services/emailService';
 import { authenticateToken } from '../middleware/auth';
-import { SentReply } from '../models';
+import { InboxReply } from '../models';
 
 const router = express.Router();
 
@@ -27,8 +27,8 @@ router.post('/reply', authenticateToken, async (req, res) => {
     });
 
     // Save reply to database
-    const sentReply = await SentReply.create({
-      original_form_id: replyTo ? parseInt(replyTo) : undefined,
+    const sentReply = await InboxReply.create({
+      original_email_id: replyTo ? parseInt(replyTo) : undefined,
       subject,
       sent_to: to,
       message: content,
@@ -59,10 +59,10 @@ router.get('/sent-replies', authenticateToken, async (req, res) => {
     
     const whereClause: any = {};
     if (formId) {
-      whereClause.original_form_id = parseInt(formId as string);
+      whereClause.original_email_id = parseInt(formId as string);
     }
     
-    const sentReplies = await SentReply.findAll({
+    const sentReplies = await InboxReply.findAll({
       where: whereClause,
       order: [['created_at', 'DESC']],
       include: [
@@ -71,8 +71,8 @@ router.get('/sent-replies', authenticateToken, async (req, res) => {
           attributes: ['id', 'email']
         },
         {
-          association: 'originalForm',
-          attributes: ['id', 'subject', 'type'],
+          association: 'originalEmail',
+          attributes: ['id', 'subject', 'email_from', 'custom_data'],
           required: false
         }
       ]

@@ -3,7 +3,7 @@ import sequelize from '../config/database';
 
 export interface InboxTypeAttributes {
   id: number;
-  icon: string;
+  name: string;
   type: string;
 }
 
@@ -11,7 +11,7 @@ export interface InboxTypeCreationAttributes extends Omit<InboxTypeAttributes, '
 
 class InboxType extends Model<InboxTypeAttributes, InboxTypeCreationAttributes> implements InboxTypeAttributes {
   public id!: number;
-  public icon!: string;
+  public name!: string;
   public type!: string;
 
   public readonly createdAt!: Date;
@@ -24,7 +24,7 @@ InboxType.init({
     primaryKey: true,
     autoIncrement: true
   },
-  icon: {
+  name: {
     type: DataTypes.STRING(100),
     allowNull: false
   },

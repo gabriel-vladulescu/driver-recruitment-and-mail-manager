@@ -10,7 +10,7 @@ import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
-// Public route for form submissions
+// Public route for form data
 // POST /api/forms
 router.post('/', createForm);
 

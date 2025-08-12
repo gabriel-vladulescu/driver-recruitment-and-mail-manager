@@ -108,7 +108,7 @@ const startServer = async () => {
       console.log('\n📋 Available endpoints:');
       console.log('  POST /api/auth/login - Admin login');
       console.log('  GET  /api/auth/me - Get current user');
-      console.log('  POST /api/forms - Create form submission (public)');
+      console.log('  POST /api/forms - Create form data (public)');
       console.log('  GET  /api/forms - Get all forms (protected)');
       console.log('  GET  /api/forms/:id - Get form details (protected)');
       console.log('  PATCH /api/forms/:id/read - Update read status (protected)');

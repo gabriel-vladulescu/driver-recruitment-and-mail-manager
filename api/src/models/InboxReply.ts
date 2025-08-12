@@ -1,9 +1,9 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
-interface SentReplyAttributes {
+interface InboxReplyAttributes {
   id: number;
-  original_form_id?: number;
+  original_email_id?: number;
   subject: string;
   sent_to: string;
   message: string;
@@ -14,11 +14,11 @@ interface SentReplyAttributes {
   deleted_at?: Date;
 }
 
-interface SentReplyCreationAttributes extends Optional<SentReplyAttributes, 'id' | 'original_form_id' | 'signature' | 'created_at' | 'updated_at' | 'deleted_at'> {}
+interface InboxReplyCreationAttributes extends Optional<InboxReplyAttributes, 'id' | 'original_email_id' | 'signature' | 'created_at' | 'updated_at' | 'deleted_at'> {}
 
-class SentReply extends Model<SentReplyAttributes, SentReplyCreationAttributes> implements SentReplyAttributes {
+class InboxReply extends Model<InboxReplyAttributes, InboxReplyCreationAttributes> implements InboxReplyAttributes {
   public id!: number;
-  public original_form_id?: number;
+  public original_email_id?: number;
   public subject!: string;
   public sent_to!: string;
   public message!: string;
@@ -39,7 +39,7 @@ class SentReply extends Model<SentReplyAttributes, SentReplyCreationAttributes> 
     
     return {
       id: this.id.toString(),
-      originalFormId: this.original_form_id?.toString() || null,
+      originalEmailId: this.original_email_id?.toString() || null,
       subject: this.subject,
       sentTo: this.sent_to,
       message: this.message,
@@ -50,20 +50,22 @@ class SentReply extends Model<SentReplyAttributes, SentReplyCreationAttributes> 
   }
 }
 
-SentReply.init(
+InboxReply.init(
   {
     id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
     },
-    original_form_id: {
+    original_email_id: {
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'form_submissions',
+        model: 'inbox_emails',
         key: 'id'
-      }
+      },
+      onDelete: 'SET NULL',
+      onUpdate: 'CASCADE'
     },
     subject: {
       type: DataTypes.STRING,
@@ -95,14 +97,14 @@ SentReply.init(
   },
   {
     sequelize,
-    modelName: 'SentReply',
-    tableName: 'sent_replies',
+    modelName: 'InboxReply',
+    tableName: 'inbox_replies',
     timestamps: true,
     paranoid: true,
     underscored: true,
     indexes: [
       {
-        fields: ['original_form_id'],
+        fields: ['original_email_id'],
       },
       {
         fields: ['sent_to'],
@@ -117,4 +119,4 @@ SentReply.init(
   }
 );
 
-export default SentReply;
+export default InboxReply;

@@ -114,7 +114,7 @@
             </div>
             <div class="email-meta">
               <div class="inbox-type-badge" v-if="email.inboxType">
-                <span class="inbox-type-text">{{ formatInboxType(email.inboxType.type) }}</span>
+                <span class="inbox-type-text">{{ email.inboxType.name }}</span>
               </div>
               <span class="email-date">{{ formatDate(email.createdAt) }}</span>
               <div v-if="email.inboxLabel" class="email-label">
@@ -252,7 +252,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import axios from 'axios'
 import {
   Mail, Send, Tag, Inbox, RefreshCw, Download, Search, X, Loader, AlertCircle,
@@ -340,6 +340,9 @@ const fetchEmails = async () => {
     emails.value = response.data.data.emails
     totalPages.value = response.data.data.pagination.totalPages
     
+    // Emit update event to refresh sidebar counts
+    emit('emailUpdated')
+    
   } catch (err: any) {
     error.value = err.response?.data?.message || 'Eroare la încărcarea email-urilor'
   } finally {
@@ -362,7 +365,14 @@ const fetchEmailsFromServer = async () => {
     // Simulate progress updates (since we don't have real-time progress yet)
     emit('fetchProgress', 50, 100)
     
-    // Small delay to show progress
+    // Small delay to ensure database operations complete
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    
+    // Emit update event to refresh sidebar counts BEFORE refreshing local list
+    // This ensures sidebar gets the latest data from database
+    emit('emailUpdated')
+    
+    // Small delay to ensure sidebar refresh completes
     await new Promise(resolve => setTimeout(resolve, 500))
     
     // Refresh the email list
@@ -371,9 +381,6 @@ const fetchEmailsFromServer = async () => {
     
     // Complete progress
     emit('fetchProgress', 100, 100)
-    
-    // Emit update event to refresh sidebar counts (new emails might be unread)
-    emit('emailUpdated')
     
     // Small delay to show completion
     await new Promise(resolve => setTimeout(resolve, 300))
@@ -386,13 +393,33 @@ const fetchEmailsFromServer = async () => {
   }
 }
 
-const selectEmail = (email: any) => {
+const selectEmail = async (email: any) => {
   selectedEmailId.value = email.id
-  emit('selectEmail', email)
   
-  // Mark as read if not already
+  // Mark as read FIRST if not already, then select
   if (!email.is_read) {
-    toggleReadStatus(email, false)
+    await markAsRead(email)
+  }
+  
+  // Select the email AFTER marking as read to ensure event listeners are still active
+  emit('selectEmail', email)
+}
+
+const markAsRead = async (email: any) => {
+  try {
+    await axios.patch(
+      `http://localhost:4000/api/inbox/emails/${email.id}/read`,
+      { is_read: true }
+    )
+    
+    // Update local email object
+    email.is_read = true
+    
+    // Emit update event to refresh sidebar counts
+    emit('emailUpdated')
+    
+  } catch (err) {
+    console.error('Error marking email as read:', err)
   }
 }
 
@@ -494,16 +521,6 @@ const formatSenderName = (email: any) => {
   return emailAddress
 }
 
-const formatInboxType = (type: string) => {
-  switch (type) {
-    case 'INTERNAL_INBOX':
-      return 'Email'
-    case 'EXTERNAL_FORMS':
-      return 'Formular'
-    default:
-      return type
-  }
-}
 
 const debouncedSearch = (() => {
   let timeout: NodeJS.Timeout

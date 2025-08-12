@@ -6,20 +6,6 @@ export interface User {
   updated_at: Date;
 }
 
-export interface FormSubmission {
-  id: number;
-  type: 'TYPE_CONTACT' | 'TYPE_RECRUITMENT' | 'TYPE_EXTERNAL_CAR_RENT';
-  subject: string;
-  preview_message: string;
-  is_read: boolean;
-  is_archived: boolean;
-  contact_email?: string;
-  contact_phone?: string;
-  form_data: Record<string, any>;
-  created_at: Date;
-  updated_at: Date;
-}
-
 export interface JWTPayload {
   id: number;
   email: string;

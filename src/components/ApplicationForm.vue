@@ -347,10 +347,27 @@ export default {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            type: this.formType,
+            mapping: {
+              emailFromProperty: this.formData.email ? 'email' : 'phone', // Use email if available, otherwise phone
+              emailFromName: 'name',
+              emailTo: 'admin'
+            },
             formData: {
-              ...this.formData,
-              source: window.location.pathname
+              type: this.formType,
+              name: `${this.formData.firstName} ${this.formData.lastName}`.trim(),
+              email: this.formData.email || `${this.formData.phone}@phone.placeholder`, // Create placeholder email if no email
+              phone: this.formData.phone,
+              experience: this.formData.experience,
+              hasVehicle: this.formData.hasVehicle,
+              vehicleBrand: this.formData.vehicleBrand,
+              vehicleYear: this.formData.vehicleYear,
+              vehicleFuel: this.formData.vehicleFuel,
+              vehicleColor: this.formData.vehicleColor,
+              availability: this.formData.availability,
+              preferredSchedule: this.formData.preferredSchedule,
+              message: this.formData.message,
+              source: window.location.pathname,
+              acceptTerms: this.formData.acceptTerms
             }
           }),
         });

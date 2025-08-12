@@ -1,7 +1,6 @@
 import sequelize from '../config/database';
 import User from './User';
-import FormSubmission from './FormSubmission';
-import SentReply from './SentReply';
+import InboxReply from './InboxReply';
 import InboxType from './InboxType';
 import InboxCategory from './InboxCategory';
 import InboxLabel from './InboxLabel';
@@ -9,21 +8,18 @@ import InboxEmail from './InboxEmail';
 import InboxDeleted from './InboxDeleted';
 
 // Define associations here if needed
-// User.hasMany(FormSubmission, { foreignKey: 'created_by' });
-// FormSubmission.belongsTo(User, { foreignKey: 'created_by' });
+// InboxReply associations
+User.hasMany(InboxReply, { foreignKey: 'sent_by_user_id', as: 'inboxReplies' });
+InboxReply.belongsTo(User, { foreignKey: 'sent_by_user_id', as: 'sentByUser' });
 
-// SentReply associations
-User.hasMany(SentReply, { foreignKey: 'sent_by_user_id', as: 'sentReplies' });
-SentReply.belongsTo(User, { foreignKey: 'sent_by_user_id', as: 'sentByUser' });
-
-FormSubmission.hasMany(SentReply, { foreignKey: 'original_form_id', as: 'replies' });
-SentReply.belongsTo(FormSubmission, { foreignKey: 'original_form_id', as: 'originalForm' });
+// InboxReply associations with InboxEmail
+InboxReply.belongsTo(InboxEmail, { foreignKey: 'original_email_id', as: 'originalEmail' });
+InboxEmail.hasMany(InboxReply, { foreignKey: 'original_email_id', as: 'replies' });
 
 export {
   sequelize,
   User,
-  FormSubmission,
-  SentReply,
+  InboxReply,
   InboxType,
   InboxCategory,
   InboxLabel,
@@ -54,7 +50,7 @@ export const syncDatabase = async (force = false) => {
     const internalInboxExists = await InboxType.findOne({ where: { type: 'INTERNAL_INBOX' } });
     if (!internalInboxExists) {
       await InboxType.create({
-        icon: 'inbox',
+        name: 'Inbox Intern',
         type: 'INTERNAL_INBOX'
       });
       console.log('✅ Default inbox type (INTERNAL_INBOX) created.');
@@ -63,7 +59,7 @@ export const syncDatabase = async (force = false) => {
     const externalFormsExists = await InboxType.findOne({ where: { type: 'EXTERNAL_FORMS' } });
     if (!externalFormsExists) {
       await InboxType.create({
-        icon: 'form-input',
+        name: 'Formulare Externe',
         type: 'EXTERNAL_FORMS'
       });
       console.log('✅ Default inbox type (EXTERNAL_FORMS) created.');
