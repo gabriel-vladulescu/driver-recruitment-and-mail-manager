@@ -1,14 +1,12 @@
 import { Sequelize } from 'sequelize';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import env from './env';
 
 const sequelize = new Sequelize({
-  database: process.env.DB_NAME || 'api_backend',
-  username: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '3306'),
+  database: env.DB_NAME,
+  username: env.DB_USER,
+  password: env.DB_PASSWORD,
+  host: env.DB_HOST,
+  port: env.DB_PORT,
   dialect: 'mysql',
   timezone: '+02:00', // Bucharest timezone (EET/EEST will be handled automatically)
   dialectOptions: {
@@ -17,7 +15,7 @@ const sequelize = new Sequelize({
     bigNumberStrings: true,
     timezone: '+02:00',
   },
-  logging: process.env.NODE_ENV === 'development' ? console.log : false,
+  logging: env.NODE_ENV === 'development' ? console.log : false,
   pool: {
     max: 10,
     min: 0,

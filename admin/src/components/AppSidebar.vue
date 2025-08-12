@@ -118,6 +118,14 @@
             <span v-if="getLabelCount(label.id) > 0" class="count-badge">
               {{ getLabelCount(label.id) }}
             </span>
+            <div class="label-actions">
+              <button @click.stop="editLabel(label)" class="label-action-btn edit-btn">
+                <Edit class="action-icon" />
+              </button>
+              <button @click.stop="confirmDeleteLabel(label)" class="label-action-btn delete-btn">
+                <Trash class="action-icon" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -206,6 +214,30 @@
       :is-visible="showSettings"
       @close="closeSettings"
     />
+
+    <!-- Delete Label Confirmation Modal -->
+    <div v-if="showDeleteConfirm" class="delete-overlay" @click="closeDeleteConfirm">
+      <div class="delete-modal" @click.stop>
+        <div class="delete-header">
+          <AlertTriangle class="warning-icon" />
+          <h3>Confirmare Ștergere</h3>
+        </div>
+        <div class="delete-body">
+          <p>Ești sigur că vrei să ștergi eticheta <strong>"{{ labelToDelete?.label }}"</strong>?</p>
+          <p class="delete-warning">
+            <strong>Atenție:</strong> Această acțiune va elimina eticheta de pe toate email-urile care o folosesc.
+            {{ getLabelCount(labelToDelete?.id || 0) > 0 ? `${getLabelCount(labelToDelete?.id || 0)} email${getLabelCount(labelToDelete?.id || 0) > 1 ? '-uri' : ''} vor fi afectat${getLabelCount(labelToDelete?.id || 0) > 1 ? 'e' : ''}.` : 'Nu există email-uri cu această etichetă.' }}
+          </p>
+        </div>
+        <div class="delete-footer">
+          <button @click="closeDeleteConfirm" class="btn-cancel">Anulează</button>
+          <button @click="deleteLabel" class="btn-delete">
+            <Trash class="btn-icon" />
+            Șterge Eticheta
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -236,7 +268,9 @@ import {
   Bookmark,
   Star,
   Heart,
-  Flag
+  Flag,
+  Edit,
+  AlertTriangle
 } from 'lucide-vue-next'
 import SettingsModal from './SettingsModal.vue'
 
@@ -283,6 +317,8 @@ const showUserMenu = ref(false)
 const showSettings = ref(false)
 const showLabelModal = ref(false)
 const editingLabel = ref<InboxLabel | null>(null)
+const showDeleteConfirm = ref(false)
+const labelToDelete = ref<InboxLabel | null>(null)
 const sectionsCollapsed = ref<Record<string, boolean>>({
   labels: false
 })
@@ -371,6 +407,44 @@ function closeLabelModal() {
     label: '',
     color: '#34d186',
     icon: 'Tag'
+  }
+}
+
+function editLabel(label: InboxLabel) {
+  editingLabel.value = label
+  labelForm.value = {
+    label: label.label,
+    color: label.color,
+    icon: label.icon
+  }
+  showLabelModal.value = true
+}
+
+function confirmDeleteLabel(label: InboxLabel) {
+  labelToDelete.value = label
+  showDeleteConfirm.value = true
+}
+
+function closeDeleteConfirm() {
+  showDeleteConfirm.value = false
+  labelToDelete.value = null
+}
+
+async function deleteLabel() {
+  if (!labelToDelete.value) return
+  
+  try {
+    await axios.delete(`http://localhost:4000/api/inbox/labels/${labelToDelete.value.id}`)
+    await fetchInboxLabels()
+    await fetchInboxEmails()
+    closeDeleteConfirm()
+    
+    // If the deleted label was currently selected, switch to All view
+    if (selectedView.value.type === 'label' && selectedView.value.id === labelToDelete.value.id) {
+      selectAllView()
+    }
+  } catch (error) {
+    console.error('Error deleting label:', error)
   }
 }
 
@@ -1180,5 +1254,155 @@ onMounted(async () => {
 
 .trash-header.active .trash-badge {
   background: rgba(255, 255, 255, 0.2);
+}
+
+/* Label Actions */
+.label-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.label-item:hover .label-actions {
+  opacity: 1;
+}
+
+.label-action-btn {
+  padding: 0.25rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.edit-btn:hover {
+  background: rgba(52, 209, 134, 0.1);
+  color: #34d186;
+}
+
+.delete-btn:hover {
+  background: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+}
+
+.action-icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* Delete Confirmation Modal */
+.delete-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(4px);
+}
+
+.delete-modal {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  max-width: 480px;
+  width: 90%;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+.delete-header {
+  padding: 1.5rem 1.5rem 0.5rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.warning-icon {
+  width: 24px;
+  height: 24px;
+  color: #f59e0b;
+}
+
+.delete-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.delete-body {
+  padding: 1rem 1.5rem;
+}
+
+.delete-body p {
+  margin: 0 0 1rem 0;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.delete-warning {
+  background: #fef3cd;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-size: 0.9rem;
+  color: #92400e;
+}
+
+.delete-footer {
+  padding: 1rem 1.5rem 1.5rem 1.5rem;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.btn-cancel {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  color: #6b7280;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+  border-color: #9ca3af;
+  background: #f9fafb;
+}
+
+.btn-delete {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #dc2626;
+  border-radius: 6px;
+  background: #dc2626;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-delete:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+.btn-icon {
+  width: 16px;
+  height: 16px;
 }
 </style>

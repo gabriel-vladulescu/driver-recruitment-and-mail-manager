@@ -1,7 +1,7 @@
 import express from 'express';
 import emailService from '../services/emailService';
 import { authenticateToken } from '../middleware/auth';
-import { InboxReply } from '../models';
+import { InboxEmail, InboxType, InboxCategory, InboxLabel } from '../models';
 
 const router = express.Router();
 
@@ -26,21 +26,39 @@ router.post('/reply', authenticateToken, async (req, res) => {
       replyTo
     });
 
-    // Save reply to database
-    const sentReply = await InboxReply.create({
-      original_email_id: replyTo ? parseInt(replyTo) : undefined,
+    // Get EMAILS_SENT category and INTERNAL_INBOX type
+    const [sentCategory, internalType] = await Promise.all([
+      InboxCategory.findOne({ where: { category: 'EMAILS_SENT' } }),
+      InboxType.findOne({ where: { type: 'INTERNAL_INBOX' } })
+    ]);
+
+    if (!sentCategory || !internalType) {
+      throw new Error('Required category or type not found');
+    }
+
+    // Save reply as inbox_email with EMAILS_SENT category
+    const sentReply = await InboxEmail.create({
       subject,
-      sent_to: to,
-      message: content,
-      signature: signature || undefined,
-      sent_by_user_id: req.user!.id
+      email_from: 'admin@bloom.ro',
+      email_from_name: 'Admin',
+      email_to: to,
+      email_mail_to: to,
+      message: content + (signature ? `\n\n${signature}` : ''),
+      is_read: true,
+      inbox_type_id: internalType.id,
+      inbox_category_id: sentCategory.id,
+      custom_data: {
+        isReply: true,
+        originalEmailId: replyTo ? parseInt(replyTo) : null,
+        signature: signature || null
+      }
     });
 
     res.json({
       success: true,
       message: 'Email trimis cu succes',
       data: {
-        replyId: sentReply.id
+        emailId: sentReply.id
       }
     });
   } catch (error: any) {
@@ -52,37 +70,48 @@ router.post('/reply', authenticateToken, async (req, res) => {
   }
 });
 
-// Get sent replies
+// Get sent replies (now from inbox_emails with EMAILS_SENT category)
 router.get('/sent-replies', authenticateToken, async (req, res) => {
   try {
     const { formId } = req.query;
     
-    const whereClause: any = {};
-    if (formId) {
-      whereClause.original_email_id = parseInt(formId as string);
+    // Get EMAILS_SENT category
+    const sentCategory = await InboxCategory.findOne({ where: { category: 'EMAILS_SENT' } });
+    if (!sentCategory) {
+      return res.status(500).json({
+        success: false,
+        message: 'EMAILS_SENT category not found'
+      });
     }
     
-    const sentReplies = await InboxReply.findAll({
+    const whereClause: any = {
+      inbox_category_id: sentCategory.id
+    };
+    
+    // If formId is provided, filter by replies to that specific email
+    if (formId) {
+      whereClause.custom_data = {
+        isReply: true,
+        originalEmailId: parseInt(formId as string)
+      };
+    } else {
+      // Only get replies (not regular sent emails)
+      whereClause['custom_data.isReply'] = true;
+    }
+    
+    const sentReplies = await InboxEmail.findAll({
       where: whereClause,
-      order: [['created_at', 'DESC']],
+      order: [['createdAt', 'DESC']],
       include: [
-        {
-          association: 'sentByUser',
-          attributes: ['id', 'email']
-        },
-        {
-          association: 'originalEmail',
-          attributes: ['id', 'subject', 'email_from', 'custom_data'],
-          required: false
-        }
+        { model: InboxType, as: 'inboxType' },
+        { model: InboxCategory, as: 'inboxCategory' },
+        { model: InboxLabel, as: 'inboxLabel', required: false }
       ]
     });
 
-    const formattedReplies = sentReplies.map(reply => reply.toApiResponse());
-
     res.json({
       success: true,
-      data: formattedReplies
+      data: sentReplies
     });
   } catch (error: any) {
     console.error('Error fetching sent replies:', error);

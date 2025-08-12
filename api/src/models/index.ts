@@ -1,6 +1,5 @@
 import sequelize from '../config/database';
 import User from './User';
-import InboxReply from './InboxReply';
 import InboxType from './InboxType';
 import InboxCategory from './InboxCategory';
 import InboxLabel from './InboxLabel';
@@ -8,18 +7,10 @@ import InboxEmail from './InboxEmail';
 import InboxDeleted from './InboxDeleted';
 
 // Define associations here if needed
-// InboxReply associations
-User.hasMany(InboxReply, { foreignKey: 'sent_by_user_id', as: 'inboxReplies' });
-InboxReply.belongsTo(User, { foreignKey: 'sent_by_user_id', as: 'sentByUser' });
-
-// InboxReply associations with InboxEmail
-InboxReply.belongsTo(InboxEmail, { foreignKey: 'original_email_id', as: 'originalEmail' });
-InboxEmail.hasMany(InboxReply, { foreignKey: 'original_email_id', as: 'replies' });
 
 export {
   sequelize,
   User,
-  InboxReply,
   InboxType,
   InboxCategory,
   InboxLabel,
@@ -37,13 +28,17 @@ export const syncDatabase = async (force = false) => {
     console.log(`✅ Database synchronized${force ? ' (forced)' : ''}.`);
     
     // Create default admin user if it doesn't exist
-    const adminExists = await User.findOne({ where: { email: 'admin@bloom.ro' } });
+    const { default: env } = await import('../config/env');
+    const adminEmail = env.ADMIN_EMAIL;
+    const adminPassword = env.ADMIN_PASSWORD;
+    
+    const adminExists = await User.findOne({ where: { email: adminEmail } });
     if (!adminExists) {
       await User.create({
-        email: 'admin@bloom.ro',
-        password: 'admin123', // Will be hashed automatically
+        email: adminEmail,
+        password: adminPassword, // Will be hashed automatically
       });
-      console.log('✅ Default admin user created.');
+      console.log(`✅ Default admin user created: ${adminEmail}`);
     }
 
     // Create default inbox types if they don't exist

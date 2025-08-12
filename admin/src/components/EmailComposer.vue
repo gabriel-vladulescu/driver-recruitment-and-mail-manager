@@ -130,6 +130,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted } from 'vue'
+import axios from 'axios'
 import {
   X,
   Bold,
@@ -147,6 +148,7 @@ interface Props {
   recipientEmail: string
   originalSubject?: string
   originalMessage?: string
+  originalEmailId?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -245,18 +247,24 @@ async function sendEmail() {
       to: props.recipientEmail,
       subject: emailSubject.value,
       content: editor.value.innerHTML,
-      signature: signature.value
+      signature: signature.value,
+      replyTo: props.originalEmailId
     }
 
-    emit('send', emailData)
-    
-    // Simulate sending delay
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    closeComposer()
-  } catch (error) {
+    // Make actual API call to send email using axios (which has auth configured)
+    const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000'}/api/email/reply`, emailData)
+
+    if (response.data.success) {
+      alert('Email trimis cu succes!')
+      emit('send', emailData)
+      closeComposer()
+    } else {
+      throw new Error(response.data.message || 'Eroare la trimiterea email-ului')
+    }
+  } catch (error: any) {
     console.error('Error sending email:', error)
-    alert('Eroare la trimiterea email-ului')
+    const message = error.response?.data?.message || error.message || 'Eroare la trimiterea email-ului'
+    alert(message)
   } finally {
     isSending.value = false
   }

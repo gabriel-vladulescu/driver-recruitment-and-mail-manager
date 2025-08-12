@@ -20,7 +20,9 @@
       "Bash(wmic process where:*)",
       "Bash(npm start)",
       "Bash(ts-node:*)",
-      "Bash(npx ts-node:*)"
+      "Bash(npx ts-node:*)",
+      "Bash(cmd /c:*)",
+      "Bash(PORT=4001 npm run dev)"
     ],
     "deny": []
   }

@@ -508,7 +508,7 @@ export const permanentlyDeleteEmail = async (req: Request, res: Response) => {
           message_id: messageId,
           email_from: email.email_from,
           subject: email.subject || 'Fără subiect',
-          deletion_date: new Date()
+          deleted_at: new Date()
         });
       }
     } catch (insertError: any) {

@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
+import env from './config/env';
 import { syncDatabase } from './models';
 import sequelize from './config/database';
 import authRoutes from './routes/auth';
@@ -9,11 +9,8 @@ import formsRoutes from './routes/forms';
 import emailRoutes from './routes/email';
 import inboxRoutes from './routes/inbox';
 
-// Load environment variables
-dotenv.config();
-
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = env.PORT;
 
 // Security middleware
 app.use(helmet({
@@ -22,7 +19,7 @@ app.use(helmet({
 }));
 
 // CORS configuration
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173'];
+const allowedOrigins = env.ALLOWED_ORIGINS.split(',');
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import env from '../config/env';
 import { JWTPayload } from '../types';
 import { User } from '../models';
 
@@ -23,14 +24,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
       });
     }
 
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      console.error('JWT_SECRET not configured');
-      return res.status(500).json({
-        success: false,
-        message: 'Configurare server incorectă'
-      });
-    }
+    const jwtSecret = env.JWT_SECRET;
 
     // Verify token
     const decoded = jwt.verify(token, jwtSecret) as JWTPayload;
@@ -72,15 +66,12 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
 };
 
 export const generateToken = (user: User): string => {
-  const jwtSecret = process.env.JWT_SECRET;
-  if (!jwtSecret) {
-    throw new Error('JWT_SECRET not configured');
-  }
-
   const payload: JWTPayload = {
     id: user.id,
     email: user.email
   };
-
-  return jwt.sign(payload, jwtSecret, { expiresIn: '7d' });
+  
+  // JWT library accepts string values like "7d", "1h", "30m", etc.
+  const secret: string = env.JWT_SECRET;
+  return jwt.sign(payload, secret, { expiresIn: env.JWT_EXPIRES_IN });
 };

@@ -202,6 +202,17 @@
         </div>
       </div>
     </div>
+
+    <!-- Email Composer Modal -->
+    <EmailComposer
+      :is-visible="showReplyModal"
+      :recipient-email="email?.email_from || ''"
+      :original-subject="email?.subject || ''"
+      :original-message="getOriginalMessageText()"
+      :original-email-id="email?.id"
+      @close="closeReplyModal"
+      @send="handleEmailSend"
+    />
   </div>
 </template>
 
@@ -212,8 +223,9 @@ import DOMPurify from 'dompurify'
 import {
   Mail, MailOpen, Tag, Trash2, X, Paperclip, Calendar, User,
   Briefcase, Bookmark, Star, Heart, Flag, Archive, RotateCcw, ArrowLeft,
-  MessageSquare, Phone, MapPin, Clock, Car, FileText
+  MessageSquare, Phone, MapPin, Clock, Car, FileText, Reply
 } from 'lucide-vue-next'
+import EmailComposer from './EmailComposer.vue'
 
 // Props
 interface Props {
@@ -238,6 +250,7 @@ const emit = defineEmits<{
 const showLabelModal = ref(false)
 const selectedLabelId = ref<number | null>(null)
 const availableLabels = ref<any[]>([])
+const showReplyModal = ref(false)
 
 // Computed
 const hasAttachments = computed(() => {
@@ -491,6 +504,34 @@ const permanentlyDeleteEmail = async () => {
     console.error('Error permanently deleting email:', error)
     alert(error.response?.data?.message || 'Eroare la ștergerea definitivă')
   }
+}
+
+// Reply functionality
+const closeReplyModal = () => {
+  showReplyModal.value = false
+}
+
+const getOriginalMessageText = (): string => {
+  if (!props.email) return ''
+  
+  const date = new Date(props.email.createdAt).toLocaleDateString('ro-RO', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+  
+  const sender = props.email.email_from_name || props.email.email_from
+  const subject = props.email.subject || 'Fără subiect'
+  
+  return `\n\n\n--- Mesaj original ---\nDe la: ${sender}\nData: ${date}\nSubiect: ${subject}\n\n${props.email.message || ''}`
+}
+
+const handleEmailSend = () => {
+  showReplyModal.value = false
+  // Optionally emit an event to refresh the inbox or show success message
+  emit('emailUpdated')
 }
 
 // Watch for email changes to set initial label
