@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import env from './config/env';
-import { syncDatabase } from './models';
 import sequelize from './config/database';
 import authRoutes from './routes/auth';
 import formsRoutes from './routes/forms';
@@ -95,8 +94,12 @@ app.use('*', (req, res) => {
 // Start server
 const startServer = async () => {
   try {
-    // Initialize database
-    await syncDatabase();
+    // Initialize database connection
+    await sequelize.authenticate();
+    console.log('✅ Database connection established successfully.');
+    
+    // Note: For database initialization with tables and default data,
+    // run: npm run seed or npm run db:reset
     
     app.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);

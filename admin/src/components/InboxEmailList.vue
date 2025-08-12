@@ -30,7 +30,7 @@
             {{ selectedEmailIds.length === emails.length && emails.length > 0 ? 'Deselectează tot' : 'Selectează tot' }}
           </button>
           <button 
-            @click="bulkPermanentlyDelete" 
+            @click="showBulkDeleteConfirm" 
             class="bulk-delete-btn"
             :disabled="selectedEmailIds.length === 0"
           >
@@ -151,7 +151,7 @@
               <RotateCcw class="action-icon" />
             </button>
             <button 
-              @click.stop="permanentlyDeleteEmail(email)" 
+              @click.stop="showPermanentDeleteConfirm(email)" 
               class="action-btn delete-btn"
               title="Șterge definitiv"
             >
@@ -248,6 +248,32 @@
         </div>
       </div>
     </div>
+
+    <!-- Delete Confirmation Dialogs -->
+    <ConfirmDialog
+      :is-visible="showDeleteDialog"
+      type="danger"
+      title="Șterge Definitiv Email"
+      message="Sigur dorești să ștergi definitiv acest email? Această acțiune nu poate fi anulată."
+      :details="emailToDelete?.subject"
+      confirm-text="Șterge Definitiv"
+      cancel-text="Anulează"
+      :loading="isDeleting"
+      @confirm="confirmPermanentDelete"
+      @cancel="closeDeleteDialog"
+    />
+
+    <ConfirmDialog
+      :is-visible="showBulkDeleteDialog"
+      type="danger"
+      title="Șterge Definitiv Email-uri"
+      :message="`Sigur dorești să ștergi definitiv ${selectedEmailIds.length} email${selectedEmailIds.length > 1 ? '-uri' : ''}? Această acțiune nu poate fi anulată.`"
+      confirm-text="Șterge Definitiv"
+      cancel-text="Anulează"
+      :loading="isDeleting"
+      @confirm="confirmBulkDelete"
+      @cancel="closeBulkDeleteDialog"
+    />
   </div>
 </template>
 
@@ -258,6 +284,7 @@ import {
   Mail, Send, Tag, Inbox, RefreshCw, Download, Search, X, Loader, AlertCircle,
   MailOpen, ChevronLeft, ChevronRight, Briefcase, Bookmark, Star, Heart, Flag, Archive, Trash2, RotateCcw
 } from 'lucide-vue-next'
+import ConfirmDialog from './ConfirmDialog.vue'
 
 // Props
 interface Props {
@@ -287,6 +314,10 @@ const searchQuery = ref('')
 const currentPage = ref(1)
 const totalPages = ref(1)
 const selectedEmailIds = ref<number[]>([])  // For bulk selection in trash
+const showDeleteDialog = ref(false)
+const showBulkDeleteDialog = ref(false)
+const emailToDelete = ref<any>(null)
+const isDeleting = ref(false)
 const pageSize = 20
 const selectedEmailId = ref<number | null>(null)
 const fetchingFromServer = ref(false)
@@ -482,6 +513,9 @@ const assignLabel = async () => {
         : null
     }
     
+    // Force update sidebar counts immediately
+    emit('emailUpdated')
+    
     closeLabelModal()
   } catch (err) {
     console.error('Error assigning label:', err)
@@ -596,58 +630,78 @@ const restoreEmail = async (email: any) => {
   }
 }
 
-const permanentlyDeleteEmail = async (email: any) => {
-  if (!confirm('Sigur vrei să ștergi definitiv acest email? Această acțiune nu poate fi anulată.')) {
-    return
-  }
+const showPermanentDeleteConfirm = (email: any) => {
+  emailToDelete.value = email
+  showDeleteDialog.value = true
+}
+
+const confirmPermanentDelete = async () => {
+  if (!emailToDelete.value) return
   
+  isDeleting.value = true
   try {
-    await axios.delete(`http://localhost:4000/api/inbox/emails/${email.id}/permanent`)
+    await axios.delete(`http://localhost:4000/api/inbox/emails/${emailToDelete.value.id}/permanent`)
     
     // Remove from current list
-    const index = emails.value.findIndex(e => e.id === email.id)
+    const index = emails.value.findIndex(e => e.id === emailToDelete.value.id)
     if (index > -1) {
       emails.value.splice(index, 1)
     }
     
     // Remove from selection if selected
-    const selectionIndex = selectedEmailIds.value.indexOf(email.id)
+    const selectionIndex = selectedEmailIds.value.indexOf(emailToDelete.value.id)
     if (selectionIndex > -1) {
       selectedEmailIds.value.splice(selectionIndex, 1)
     }
     
     emit('emailUpdated')
+    showDeleteDialog.value = false
+    emailToDelete.value = null
   } catch (error: any) {
     console.error('Error permanently deleting email:', error)
-    alert(error.response?.data?.message || 'Eroare la ștergerea definitivă')
+  } finally {
+    isDeleting.value = false
   }
 }
 
-const bulkPermanentlyDelete = async () => {
+const closeDeleteDialog = () => {
+  showDeleteDialog.value = false
+  emailToDelete.value = null
+}
+
+const showBulkDeleteConfirm = () => {
   if (selectedEmailIds.value.length === 0) {
-    alert('Nu ai selectat niciun email.')
-    return
+    return // Could show a toast notification here
   }
+  showBulkDeleteDialog.value = true
+}
+
+const confirmBulkDelete = async () => {
+  if (selectedEmailIds.value.length === 0) return
   
-  if (!confirm(`Sigur vrei să ștergi definitiv ${selectedEmailIds.value.length} email${selectedEmailIds.value.length > 1 ? '-uri' : ''}? Această acțiune nu poate fi anulată.`)) {
-    return
-  }
-  
+  isDeleting.value = true
   try {
     // Delete emails one by one
-    for (const emailId of selectedEmailIds.value) {
+    const emailsToDelete = [...selectedEmailIds.value]
+    for (const emailId of emailsToDelete) {
       await axios.delete(`http://localhost:4000/api/inbox/emails/${emailId}/permanent`)
     }
     
     // Remove all selected emails from list
-    emails.value = emails.value.filter(email => !selectedEmailIds.value.includes(email.id))
+    emails.value = emails.value.filter(email => !emailsToDelete.includes(email.id))
     selectedEmailIds.value = []
     
     emit('emailUpdated')
+    showBulkDeleteDialog.value = false
   } catch (error: any) {
     console.error('Error bulk deleting emails:', error)
-    alert(error.response?.data?.message || 'Eroare la ștergerea în bloc')
+  } finally {
+    isDeleting.value = false
   }
+}
+
+const closeBulkDeleteDialog = () => {
+  showBulkDeleteDialog.value = false
 }
 
 // Watchers

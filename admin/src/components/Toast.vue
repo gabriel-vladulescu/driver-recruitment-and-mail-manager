@@ -1,0 +1,179 @@
+<template>
+  <div class="toast-container">
+    <Transition name="toast" appear>
+      <div v-if="visible" class="toast" :class="[type]">
+        <div class="toast-icon">
+          <CheckCircle v-if="type === 'success'" class="icon" />
+          <AlertCircle v-else-if="type === 'error'" class="icon" />
+          <Info v-else-if="type === 'info'" class="icon" />
+          <AlertTriangle v-else class="icon" />
+        </div>
+        <div class="toast-content">
+          <p class="toast-message">{{ message }}</p>
+        </div>
+        <button @click="$emit('close')" class="toast-close">
+          <X class="close-icon" />
+        </button>
+      </div>
+    </Transition>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { CheckCircle, AlertCircle, Info, AlertTriangle, X } from 'lucide-vue-next'
+
+interface Props {
+  message: string
+  type?: 'success' | 'error' | 'info' | 'warning'
+  duration?: number
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  type: 'info',
+  duration: 4000
+})
+
+const emit = defineEmits<{
+  close: []
+}>()
+
+const visible = ref(false)
+
+onMounted(() => {
+  visible.value = true
+  
+  if (props.duration > 0) {
+    setTimeout(() => {
+      emit('close')
+    }, props.duration)
+  }
+})
+</script>
+
+<style scoped>
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e0e0e0;
+  min-width: 300px;
+  max-width: 400px;
+}
+
+.toast.success {
+  border-left: 4px solid #28a745;
+}
+
+.toast.error {
+  border-left: 4px solid #dc3545;
+}
+
+.toast.info {
+  border-left: 4px solid #17a2b8;
+}
+
+.toast.warning {
+  border-left: 4px solid #ffc107;
+}
+
+.toast-icon {
+  flex-shrink: 0;
+}
+
+.icon {
+  width: 20px;
+  height: 20px;
+}
+
+.toast.success .icon {
+  color: #28a745;
+}
+
+.toast.error .icon {
+  color: #dc3545;
+}
+
+.toast.info .icon {
+  color: #17a2b8;
+}
+
+.toast.warning .icon {
+  color: #ffc107;
+}
+
+.toast-content {
+  flex: 1;
+}
+
+.toast-message {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #1a1a1a;
+  line-height: 1.4;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+}
+
+.toast-close:hover {
+  background: #f8f9fa;
+}
+
+.close-icon {
+  width: 16px;
+  height: 16px;
+  color: #666;
+}
+
+/* Transitions */
+.toast-enter-active {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.toast-leave-active {
+  transition: all 0.3s ease-in;
+}
+
+.toast-enter-from {
+  opacity: 0;
+  transform: translateX(100px);
+}
+
+.toast-leave-to {
+  opacity: 0;
+  transform: translateX(100px);
+}
+
+@media (max-width: 768px) {
+  .toast-container {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+  }
+  
+  .toast {
+    min-width: auto;
+    max-width: none;
+  }
+}
+</style>

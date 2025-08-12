@@ -36,13 +36,22 @@ router.post('/reply', authenticateToken, async (req, res) => {
       throw new Error('Required category or type not found');
     }
 
+    // Get original email to extract the sender's name for email_to_name
+    let originalEmailFromName = to; // fallback to email address
+    if (replyTo) {
+      const originalEmail = await InboxEmail.findByPk(replyTo);
+      if (originalEmail) {
+        originalEmailFromName = originalEmail.email_from_name || originalEmail.email_from;
+      }
+    }
+
     // Save reply as inbox_email with EMAILS_SENT category
     const sentReply = await InboxEmail.create({
       subject,
       email_from: 'admin@bloom.ro',
       email_from_name: 'Admin',
       email_to: to,
-      email_mail_to: to,
+      email_to_name: originalEmailFromName,
       message: content + (signature ? `\n\n${signature}` : ''),
       is_read: true,
       inbox_type_id: internalType.id,

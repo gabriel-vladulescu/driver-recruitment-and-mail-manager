@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import { InboxEmail, InboxType, InboxCategory } from '../models';
-import { ApiResponse } from '../types';
+import { ApiResponse, FormCustomData } from '../types';
 
 export const getAllForms = async (req: Request, res: Response) => {
   try {
@@ -22,22 +22,22 @@ export const getAllForms = async (req: Request, res: Response) => {
 
     const formattedForms = forms.map((form: any) => ({
       id: form.id,
-      type: (form.custom_data as any)?.type || 'TYPE_CONTACT',
+      type: (form.custom_data as FormCustomData)?.type || 'TYPE_CONTACT',
       subject: form.subject,
       previewMessage: form.message.length > 100 ? form.message.substring(0, 100) + '...' : form.message,
       contactEmail: form.email_from,
-      contactPhone: (form.custom_data as any)?.formData?.phone || null,
+      contactPhone: (form.custom_data as FormCustomData)?.formData?.phone || null,
       isRead: form.is_read,
       createdAt: form.createdAt,
       details: {
         id: form.id,
-        type: (form.custom_data as any)?.type || 'TYPE_CONTACT',
+        type: (form.custom_data as FormCustomData)?.type || 'TYPE_CONTACT',
         subject: form.subject,
         message: form.message,
         contactEmail: form.email_from,
         contactName: form.email_from_name,
-        contactPhone: (form.custom_data as any)?.formData?.phone || null,
-        formData: (form.custom_data as any)?.formData || {},
+        contactPhone: (form.custom_data as FormCustomData)?.formData?.phone || null,
+        formData: (form.custom_data as FormCustomData)?.formData || {},
         isRead: form.is_read,
         createdAt: form.createdAt,
         updatedAt: form.updatedAt
@@ -79,12 +79,12 @@ export const getFormById = async (req: Request, res: Response) => {
 
     const response = {
       id: form.id,
-      type: (form.custom_data as any)?.type || 'TYPE_CONTACT',
+      type: (form.custom_data as FormCustomData)?.type || 'TYPE_CONTACT',
       subject: form.subject,
       message: form.message,
       contactEmail: form.email_from,
       contactName: form.email_from_name,
-      contactPhone: (form.custom_data as any)?.formData?.phone || null,
+      contactPhone: (form.custom_data as FormCustomData)?.formData?.phone || null,
       formData: (form.custom_data as any)?.formData || {},
       isRead: form.is_read,
       createdAt: form.createdAt,
@@ -144,18 +144,10 @@ export const updateReadStatus = async (req: Request, res: Response) => {
   }
 };
 
-// Archive functionality replaced with soft delete (trash)
-export const updateArchiveStatus = async (req: Request, res: Response) => {
+// Move to trash (soft delete)
+export const moveToTrash = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { isArchived } = req.body;
-
-    if (typeof isArchived !== 'boolean') {
-      return res.status(400).json({
-        success: false,
-        message: 'Statusul de arhivare trebuie să fie boolean'
-      } as ApiResponse);
-    }
 
     const form = await InboxEmail.findOne({
       where: {
@@ -171,27 +163,19 @@ export const updateArchiveStatus = async (req: Request, res: Response) => {
       } as ApiResponse);
     }
 
-    if (isArchived) {
-      // Move to trash (soft delete)
-      await form.destroy();
-    } else {
-      // This would be restore from trash, but we handle that separately
-      return res.status(400).json({
-        success: false,
-        message: 'Pentru a restaura folosiți funcția de restore din trash'
-      } as ApiResponse);
-    }
+    // Move to trash (soft delete)
+    await form.destroy();
 
     res.json({
       success: true,
-      message: 'Formularul a fost arhivat (mutat în trash)'
+      message: 'Formularul a fost mutat în trash'
     } as ApiResponse);
 
   } catch (error) {
-    console.error('Update archive status error:', error);
+    console.error('Move to trash error:', error);
     res.status(500).json({
       success: false,
-      message: 'Eroare la actualizarea statusului de arhivare'
+      message: 'Eroare la mutarea în trash'
     } as ApiResponse);
   }
 };
@@ -280,7 +264,7 @@ export const createForm = async (req: Request, res: Response) => {
       email_from: emailFrom,
       email_from_name: emailFromName || emailFrom,
       email_to: emailTo,
-      email_mail_to: 'Admin',
+      email_to_name: 'Admin',
       subject: subject,
       message: message,
       custom_data: {
@@ -289,7 +273,7 @@ export const createForm = async (req: Request, res: Response) => {
         mapping: mapping
       },
       is_read: false
-    } as any);
+    });
 
     res.status(201).json({
       success: true,

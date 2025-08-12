@@ -130,6 +130,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted } from 'vue'
+import { useToastStore } from '@/stores/toast'
 import axios from 'axios'
 import {
   X,
@@ -165,6 +166,8 @@ const emit = defineEmits<{
     signature: string
   }]
 }>()
+
+const toastStore = useToastStore()
 
 const editor = ref<HTMLElement>()
 const emailSubject = ref('')
@@ -231,12 +234,12 @@ function toggleSignatureEdit() {
 
 async function sendEmail() {
   if (!emailSubject.value.trim()) {
-    alert('Te rog completează subiectul email-ului')
+    toastStore.warning('Te rog completează subiectul email-ului')
     return
   }
 
   if (!editor.value?.innerHTML?.trim()) {
-    alert('Te rog scrie conținutul email-ului')
+    toastStore.warning('Te rog scrie conținutul email-ului')
     return
   }
 
@@ -255,7 +258,7 @@ async function sendEmail() {
     const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000'}/api/email/reply`, emailData)
 
     if (response.data.success) {
-      alert('Email trimis cu succes!')
+      toastStore.success('Email trimis cu succes!')
       emit('send', emailData)
       closeComposer()
     } else {
@@ -264,7 +267,7 @@ async function sendEmail() {
   } catch (error: any) {
     console.error('Error sending email:', error)
     const message = error.response?.data?.message || error.message || 'Eroare la trimiterea email-ului'
-    alert(message)
+    toastStore.error(message)
   } finally {
     isSending.value = false
   }

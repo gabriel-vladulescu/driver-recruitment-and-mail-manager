@@ -11,7 +11,6 @@ export interface Message {
   subject: string
   preview_message: string
   isRead: boolean
-  isArchived: boolean
   timestamp: string
 }
 
@@ -50,15 +49,12 @@ export const useMessagesStore = defineStore('messages', () => {
   const error = ref<string | null>(null)
 
   const unreadMessages = computed(() => 
-    messages.value.filter(m => !m.isRead && !m.isArchived)
+    messages.value.filter(m => !m.isRead)
   )
 
-  const archivedMessages = computed(() => 
-    messages.value.filter(m => m.isArchived)
-  )
 
   const activeMessages = computed(() => 
-    messages.value.filter(m => !m.isArchived)
+    messages.value
   )
 
   const sentMessagesCount = computed(() => 
@@ -126,24 +122,24 @@ export const useMessagesStore = defineStore('messages', () => {
     }
   }
 
-  async function archiveMessage(id: string, isArchived: boolean) {
+  async function deleteMessage(id: string) {
     try {
-      await axios.patch(`${API_BASE_URL}/api/forms/${id}/archive`, { isArchived })
+      await axios.delete(`${API_BASE_URL}/api/forms/${id}`)
       
-      // Update local state
-      const message = messages.value.find(m => m.id === id)
-      if (message) {
-        message.isArchived = isArchived
+      // Remove from local state
+      const index = messages.value.findIndex(m => m.id === id)
+      if (index !== -1) {
+        messages.value.splice(index, 1)
       }
 
-      // Clear selected message if it was archived
-      if (isArchived && selectedMessage.value?.id === id) {
+      // Clear selected message if it was deleted
+      if (selectedMessage.value?.id === id) {
         selectedMessage.value = null
         selectedMessageDetails.value = null
       }
     } catch (err: any) {
-      error.value = err.response?.data?.message || 'Eroare la arhivarea mesajului'
-      console.error('Error archiving message:', err)
+      error.value = err.response?.data?.message || 'Eroare la ștergerea mesajului'
+      console.error('Error deleting message:', err)
     }
   }
 
@@ -176,7 +172,6 @@ export const useMessagesStore = defineStore('messages', () => {
     sentMessages: computed(() => sentMessages.value),
     selectedSentMessage: computed(() => selectedSentMessage.value),
     unreadMessages,
-    archivedMessages,
     activeMessages,
     sentMessagesCount,
     loading: computed(() => loading.value),
@@ -186,7 +181,7 @@ export const useMessagesStore = defineStore('messages', () => {
     fetchSentMessages,
     fetchMessageDetails,
     markAsRead,
-    archiveMessage,
+    deleteMessage,
     selectMessage,
     selectSentMessage,
     clearSelection

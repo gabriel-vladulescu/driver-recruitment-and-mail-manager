@@ -37,14 +37,12 @@
           </button>
 
           <button 
-            @click="toggleArchive"
-            class="action-btn"
-            :class="{ 'archive-btn': !selectedMessage?.isArchived, 'unarchive-btn': selectedMessage?.isArchived }"
+            @click="deleteMessage"
+            class="action-btn delete-btn"
             :disabled="actionLoading"
           >
-            <Archive v-if="!selectedMessage?.isArchived" class="btn-icon" />
-            <ArchiveRestore v-else class="btn-icon" />
-            {{ selectedMessage?.isArchived ? 'Dezarhivează' : 'Arhivează' }}
+            <Archive class="btn-icon" />
+            Șterge
           </button>
           
           <button @click="closeDetail" class="action-btn close-btn">
@@ -62,10 +60,6 @@
           <span v-if="selectedMessage && !selectedMessage.isRead" class="status-badge unread">
             <Circle class="status-icon" />
             Necitit
-          </span>
-          <span v-if="selectedMessage?.isArchived" class="status-badge archived">
-            <Archive class="status-icon" />
-            Arhivat
           </span>
           <span v-if="messageDetails?.contact?.email" class="status-badge email-available">
             <Mail class="status-icon" />
@@ -149,21 +143,36 @@
       @close="closeEmailComposer"
       @send="handleEmailSend"
     />
+
+    <!-- Delete Confirmation Dialog -->
+    <ConfirmDialog
+      :is-visible="showDeleteDialog"
+      type="danger"
+      title="Șterge Mesaj"
+      :message="`Sigur doriți să ștergeți acest mesaj?`"
+      :details="selectedMessage?.subject"
+      confirm-text="Șterge"
+      cancel-text="Anulează"
+      :loading="actionLoading"
+      @confirm="confirmDelete"
+      @cancel="closeDeleteDialog"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useMessagesStore } from '@/stores/messages'
+import { useToastStore } from '@/stores/toast'
 import EmailComposer from './EmailComposer.vue'
 import SentReplies from './SentReplies.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
 import {
   MessageCircle,
   Briefcase,
   Car,
   Mail,
   Archive,
-  ArchiveRestore,
   X,
   Circle,
   User,
@@ -175,8 +184,10 @@ import {
 } from 'lucide-vue-next'
 
 const messagesStore = useMessagesStore()
+const toastStore = useToastStore()
 const actionLoading = ref(false)
 const showEmailComposer = ref(false)
+const showDeleteDialog = ref(false)
 
 const selectedMessage = computed(() => messagesStore.selectedMessage)
 const messageDetails = computed(() => messagesStore.selectedMessageDetails)
@@ -242,20 +253,27 @@ async function markAsUnread() {
   }
 }
 
-async function toggleArchive() {
+function deleteMessage() {
   if (!selectedMessage.value || actionLoading.value) return
+  showDeleteDialog.value = true
+}
+
+async function confirmDelete() {
+  if (!selectedMessage.value) return
   
   actionLoading.value = true
   try {
-    await messagesStore.archiveMessage(
-      selectedMessage.value.id, 
-      !selectedMessage.value.isArchived
-    )
+    await messagesStore.deleteMessage(selectedMessage.value.id)
+    showDeleteDialog.value = false
   } catch (error) {
-    console.error('Error toggling archive:', error)
+    console.error('Error deleting message:', error)
   } finally {
     actionLoading.value = false
   }
+}
+
+function closeDeleteDialog() {
+  showDeleteDialog.value = false
 }
 
 function replyToEmail() {
@@ -290,7 +308,7 @@ async function handleEmailSend(emailData: {
     // Get auth token from localStorage
     const token = localStorage.getItem('admin_token')
     if (!token) {
-      alert('Nu sunteți autentificat. Vă rugăm să vă conectați din nou.')
+      toastStore.error('Nu sunteți autentificat. Vă rugăm să vă conectați din nou.')
       return
     }
 
@@ -312,7 +330,7 @@ async function handleEmailSend(emailData: {
     const result = await response.json()
 
     if (response.ok && result.success) {
-      alert(`Email trimis cu succes către ${emailData.to}!`)
+      toastStore.success(`Email trimis cu succes către ${emailData.to}!`)
       showEmailComposer.value = false
       
       // Trigger refresh of sent replies by emitting an event or using a ref
@@ -323,7 +341,7 @@ async function handleEmailSend(emailData: {
     }
   } catch (error: any) {
     console.error('Error sending email:', error)
-    alert(`Eroare la trimiterea email-ului: ${error.message}`)
+    toastStore.error(`Eroare la trimiterea email-ului: ${error.message}`)
   }
 }
 
@@ -455,10 +473,10 @@ function closeDetail() {
   box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.1);
 }
 
-.archive-btn:hover:not(:disabled) {
-  border-color: #6c757d;
-  color: #6c757d;
-  box-shadow: 0 0 0 2px rgba(108, 117, 125, 0.1);
+.delete-btn:hover:not(:disabled) {
+  border-color: #dc3545;
+  color: #dc3545;
+  box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.1);
 }
 
 .reply-btn:hover:not(:disabled) {
@@ -525,10 +543,6 @@ function closeDetail() {
   color: #ffc107;
 }
 
-.status-badge.archived {
-  background: rgba(108, 117, 125, 0.1);
-  color: #6c757d;
-}
 
 .status-badge.email-available {
   background: rgba(0, 123, 255, 0.1);

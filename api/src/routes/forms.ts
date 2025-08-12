@@ -3,7 +3,7 @@ import {
   getAllForms, 
   getFormById, 
   updateReadStatus, 
-  updateArchiveStatus,
+  moveToTrash,
   createForm 
 } from '../controllers/formsController';
 import { authenticateToken } from '../middleware/auth';
@@ -24,7 +24,7 @@ router.get('/:id', authenticateToken, getFormById);
 // PATCH /api/forms/:id/read
 router.patch('/:id/read', authenticateToken, updateReadStatus);
 
-// PATCH /api/forms/:id/archive
-router.patch('/:id/archive', authenticateToken, updateArchiveStatus);
+// DELETE /api/forms/:id (move to trash)
+router.delete('/:id', authenticateToken, moveToTrash);
 
 export default router;

@@ -245,6 +245,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useToastStore } from '@/stores/toast'
 import axios from 'axios'
 import {
   Shield,
@@ -312,6 +313,7 @@ const emit = defineEmits<{
 
 const router = useRouter()
 const authStore = useAuthStore()
+const toastStore = useToastStore()
 
 // State
 const showUserMenu = ref(false)
@@ -434,18 +436,26 @@ function closeDeleteConfirm() {
 async function deleteLabel() {
   if (!labelToDelete.value) return
   
+  // Store the label ID before clearing the reference
+  const deletedLabelId = labelToDelete.value.id
+  const labelName = labelToDelete.value.label
+  
   try {
-    await axios.delete(`http://localhost:4000/api/inbox/labels/${labelToDelete.value.id}`)
+    await axios.delete(`http://localhost:4000/api/inbox/labels/${deletedLabelId}`)
     await fetchInboxLabels()
     await fetchInboxEmails()
-    closeDeleteConfirm()
     
     // If the deleted label was currently selected, switch to All view
-    if (selectedView.value.type === 'label' && selectedView.value.id === labelToDelete.value.id) {
+    if (selectedView.value.type === 'label' && selectedView.value.id === deletedLabelId) {
       selectAllView()
     }
+    
+    toastStore.success(`Eticheta "${labelName}" a fost ștearsă cu succes!`)
+    closeDeleteConfirm()
   } catch (error) {
     console.error('Error deleting label:', error)
+    toastStore.error('Eroare la ștergerea etichetei')
+    closeDeleteConfirm()
   }
 }
 
@@ -456,13 +466,16 @@ async function saveLabel() {
       : '/api/inbox/labels'
     
     const method = editingLabel.value ? 'patch' : 'post'
+    const action = editingLabel.value ? 'editată' : 'creată'
     
     await axios[method](`http://localhost:4000${url}`, labelForm.value)
     
     await fetchInboxLabels()
+    toastStore.success(`Eticheta "${labelForm.value.label}" a fost ${action} cu succes!`)
     closeLabelModal()
   } catch (error) {
     console.error('Error saving label:', error)
+    toastStore.error(`Eroare la ${editingLabel.value ? 'editarea' : 'crearea'} etichetei`)
   }
 }
 

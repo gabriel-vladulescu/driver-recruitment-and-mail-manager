@@ -12,7 +12,7 @@ export interface InboxEmailAttributes {
   email_from: string;
   email_from_name: string;
   email_to: string;
-  email_mail_to: string;
+  email_to_name: string;
   subject: string;
   message: string;
   custom_data?: object | null;
@@ -32,7 +32,7 @@ class InboxEmail extends Model<InboxEmailAttributes, InboxEmailCreationAttribute
   public email_from!: string;
   public email_from_name!: string;
   public email_to!: string;
-  public email_mail_to!: string;
+  public email_to_name!: string;
   public subject!: string;
   public message!: string;
   public custom_data?: object | null;
@@ -90,7 +90,7 @@ InboxEmail.init({
     type: DataTypes.STRING(255),
     allowNull: false
   },
-  email_mail_to: {
+  email_to_name: {
     type: DataTypes.STRING(255),
     allowNull: false
   },

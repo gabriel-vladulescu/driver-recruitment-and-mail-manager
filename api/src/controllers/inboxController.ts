@@ -2,46 +2,54 @@ import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import { InboxEmail, InboxType, InboxCategory, InboxLabel, InboxDeleted } from '../models';
 import ImapService from '../services/imapService';
+import { ApiResponse, InboxEmailQuery, WhereClause, EmailsWithPagination, LabelData, UpdateEmailData } from '../types';
+import { sendErrorResponse, sendSuccessResponse, validateEntityExists, sanitizeSearchInput, parsePaginationParams, calculatePaginationMeta } from '../utils/common';
 
 export const getEmails = async (req: Request, res: Response) => {
   try {
-    const { 
-      category, 
-      label, 
-      page = 1, 
-      limit = 20, 
-      search 
-    } = req.query;
-
-    const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const { category, label, page, limit, search } = req.query as InboxEmailQuery;
     
-    // Build where clause
-    const whereClause: any = {};
+    // Parse pagination with validation
+    const { page: parsedPage, limit: parsedLimit, offset } = parsePaginationParams(page, limit);
     
+    // Build where clause efficiently
+    const whereClause: WhereClause = {};
+    
+    // Use Promise.all to fetch category and label concurrently if needed
+    const promises = [];
     if (category) {
-      const inboxCategory = await InboxCategory.findOne({ 
-        where: { category: category as string } 
-      });
-      if (inboxCategory) {
-        whereClause.inbox_category_id = inboxCategory.id;
-      }
+      promises.push(InboxCategory.findOne({ where: { category } }));
+    }
+    if (label && category) {
+      promises.push(InboxLabel.findOne({ where: { id: label } }));
+    } else if (label) {
+      promises.push(null, InboxLabel.findOne({ where: { id: label } }));
     }
     
-    if (label) {
-      const inboxLabel = await InboxLabel.findOne({ 
-        where: { id: label as string } 
-      });
-      if (inboxLabel) {
-        whereClause.inbox_label_id = inboxLabel.id;
-      }
+    const [inboxCategory, inboxLabel] = await Promise.all(promises);
+    
+    if (category && inboxCategory) {
+      whereClause.inbox_category_id = inboxCategory.id;
+      // If querying by category, exclude emails that have labels assigned
+      // This makes labeled emails show only in their label view
+      whereClause.inbox_label_id = null;
+    } else if (label && inboxLabel) {
+      // If querying by label, show only emails with this specific label
+      whereClause.inbox_label_id = inboxLabel.id;
+    } else if (!label) {
+      // If no category and no label specified (All Messages view), 
+      // exclude emails that have labels assigned
+      whereClause.inbox_label_id = null;
     }
     
     if (search) {
-      whereClause[Op.or] = [
-        { subject: { [Op.like]: `%${search}%` } },
-        { email_from: { [Op.like]: `%${search}%` } },
-        { email_from_name: { [Op.like]: `%${search}%` } }
+      const sanitizedSearch = sanitizeSearchInput(search);
+      const orCondition = [
+        { subject: { [Op.like]: `%${sanitizedSearch}%` } },
+        { email_from: { [Op.like]: `%${sanitizedSearch}%` } },
+        { email_from_name: { [Op.like]: `%${sanitizedSearch}%` } }
       ];
+      (whereClause as any)[Op.or] = orCondition;
     }
 
     const emails = await InboxEmail.findAndCountAll({
@@ -52,28 +60,18 @@ export const getEmails = async (req: Request, res: Response) => {
         { model: InboxLabel, as: 'inboxLabel', required: false }
       ],
       order: [['createdAt', 'DESC']],
-      limit: parseInt(limit as string),
+      limit: parsedLimit,
       offset
     });
 
-    res.json({
-      success: true,
-      data: {
-        emails: emails.rows,
-        pagination: {
-          total: emails.count,
-          page: parseInt(page as string),
-          limit: parseInt(limit as string),
-          totalPages: Math.ceil(emails.count / parseInt(limit as string))
-        }
-      }
+    const paginationMeta = calculatePaginationMeta(emails.count, parsedPage, parsedLimit);
+
+    sendSuccessResponse<EmailsWithPagination>(res, {
+      emails: emails.rows,
+      pagination: paginationMeta
     });
   } catch (error) {
-    console.error('Get emails error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Eroare la preluarea email-urilor'
-    });
+    sendErrorResponse(res, 500, 'Eroare la preluarea email-urilor', error);
   }
 };
 
@@ -311,7 +309,7 @@ export const deleteLabel = async (req: Request, res: Response) => {
 
     // Remove label from all emails before deleting
     await InboxEmail.update(
-      { inbox_label_id: undefined },
+      { inbox_label_id: null } as any,
       { where: { inbox_label_id: id } }
     );
 
@@ -336,8 +334,6 @@ export const getCategories = async (req: Request, res: Response) => {
       order: [['name', 'ASC']]
     });
 
-    console.log('📂 Categories found:', categories.length);
-    console.log('📂 Categories data:', categories.map(c => ({ id: c.id, category: c.category, name: c.name })));
 
     res.json({
       success: true,
@@ -393,20 +389,23 @@ export const getDeletedEmails = async (req: Request, res: Response) => {
     const { page = 1, limit = 20, search } = req.query;
     const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
     
-    const whereClause: any = {};
+    const whereClause: WhereClause = {};
     
     if (search) {
-      whereClause[Op.or] = [
-        { subject: { [Op.like]: `%${search}%` } },
-        { email_from: { [Op.like]: `%${search}%` } },
-        { email_from_name: { [Op.like]: `%${search}%` } }
+      // Sanitize search input to prevent SQL injection
+      const sanitizedSearch = search.toString().replace(/[%_\\]/g, '\\$&');
+      const orCondition = [
+        { subject: { [Op.like]: `%${sanitizedSearch}%` } },
+        { email_from: { [Op.like]: `%${sanitizedSearch}%` } },
+        { email_from_name: { [Op.like]: `%${sanitizedSearch}%` } }
       ];
+      (whereClause as any)[Op.or] = orCondition;
     }
 
     const emails = await InboxEmail.findAndCountAll({
       where: {
         ...whereClause,
-        deletedAt: { [Op.not]: null }
+        deletedAt: { [Op.not]: null } as any
       },
       include: [
         { model: InboxType, as: 'inboxType' },

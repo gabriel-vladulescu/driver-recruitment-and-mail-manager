@@ -31,7 +31,7 @@ InboxDeleted.init({
     autoIncrement: true
   },
   message_id: {
-    type: DataTypes.STRING(191), // Max length for unique key in utf8mb4
+    type: DataTypes.STRING(191),
     allowNull: false,
     unique: true // Ensure we don't duplicate deleted email records
   },

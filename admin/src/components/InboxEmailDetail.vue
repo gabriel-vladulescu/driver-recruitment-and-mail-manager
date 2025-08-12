@@ -42,7 +42,7 @@
               </button>
               
               <button 
-                @click="permanentlyDeleteEmail" 
+                @click="showPermanentDeleteConfirm" 
                 class="action-btn danger permanent-delete-btn"
                 title="Șterge definitiv"
               >
@@ -79,7 +79,7 @@
               </button>
               
               <button 
-                @click="deleteEmail" 
+                @click="showDeleteConfirm" 
                 class="action-btn danger"
                 title="Șterge email"
               >
@@ -96,7 +96,7 @@
         <div class="email-meta">
           <div class="recipient-info">
             <span class="meta-label">Către:</span>
-            <span class="meta-value">{{ email.email_to || email.email_mail_to || 'Necunoscut' }}</span>
+            <span class="meta-value">{{ email.email_to || email.email_to_name || 'Necunoscut' }}</span>
           </div>
           
           <div v-if="email.inboxLabel" class="email-label">
@@ -213,6 +213,33 @@
       @close="closeReplyModal"
       @send="handleEmailSend"
     />
+
+    <!-- Delete Confirmation Dialogs -->
+    <ConfirmDialog
+      :is-visible="showDeleteDialog"
+      type="warning"
+      title="Mută în Trash"
+      :message="`Sigur dorești să muți acest email în trash?`"
+      :details="email?.subject"
+      confirm-text="Mută în Trash"
+      cancel-text="Anulează"
+      :loading="isDeleting"
+      @confirm="confirmDelete"
+      @cancel="closeDeleteDialog"
+    />
+
+    <ConfirmDialog
+      :is-visible="showPermanentDeleteDialog"
+      type="danger"
+      title="Șterge Definitiv"
+      message="Sigur dorești să ștergi definitiv acest email? Această acțiune nu poate fi anulată."
+      :details="email?.subject"
+      confirm-text="Șterge Definitiv"
+      cancel-text="Anulează"
+      :loading="isDeleting"
+      @confirm="confirmPermanentDelete"
+      @cancel="closePermanentDeleteDialog"
+    />
   </div>
 </template>
 
@@ -226,6 +253,7 @@ import {
   MessageSquare, Phone, MapPin, Clock, Car, FileText, Reply
 } from 'lucide-vue-next'
 import EmailComposer from './EmailComposer.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
 
 // Props
 interface Props {
@@ -251,6 +279,9 @@ const showLabelModal = ref(false)
 const selectedLabelId = ref<number | null>(null)
 const availableLabels = ref<any[]>([])
 const showReplyModal = ref(false)
+const showDeleteDialog = ref(false)
+const showPermanentDeleteDialog = ref(false)
+const isDeleting = ref(false)
 
 // Computed
 const hasAttachments = computed(() => {
@@ -425,18 +456,29 @@ const toggleReadStatus = async () => {
   }
 }
 
-const deleteEmail = async () => {
+const showDeleteConfirm = () => {
+  if (!props.email) return
+  showDeleteDialog.value = true
+}
+
+const confirmDelete = async () => {
   if (!props.email) return
   
-  if (!confirm('Sigur vrei să ștergi acest email?')) return
-  
+  isDeleting.value = true
   try {
     await axios.delete(`http://localhost:4000/api/inbox/emails/${props.email.id}`)
     emit('emailDeleted', props.email.id)
-    emit('emailUpdated') // Also update sidebar counts
+    emit('emailUpdated')
+    showDeleteDialog.value = false
   } catch (err) {
     console.error('Error deleting email:', err)
+  } finally {
+    isDeleting.value = false
   }
+}
+
+const closeDeleteDialog = () => {
+  showDeleteDialog.value = false
 }
 
 const closeLabelModal = () => {
@@ -489,21 +531,30 @@ const restoreEmail = async () => {
   }
 }
 
-const permanentlyDeleteEmail = async () => {
+const showPermanentDeleteConfirm = () => {
+  if (!props.email) return
+  showPermanentDeleteDialog.value = true
+}
+
+const confirmPermanentDelete = async () => {
   if (!props.email) return
   
-  if (!confirm('Sigur vrei să ștergi definitiv acest email? Această acțiune nu poate fi anulată.')) {
-    return
-  }
-  
+  isDeleting.value = true
   try {
     await axios.delete(`http://localhost:4000/api/inbox/emails/${props.email.id}/permanent`)
     emit('emailDeleted', props.email.id)
-    emit('backToList') // Return to list after delete
+    emit('backToList')
+    showPermanentDeleteDialog.value = false
   } catch (error: any) {
     console.error('Error permanently deleting email:', error)
-    alert(error.response?.data?.message || 'Eroare la ștergerea definitivă')
+    // Show error in dialog or toast instead of alert
+  } finally {
+    isDeleting.value = false
   }
+}
+
+const closePermanentDeleteDialog = () => {
+  showPermanentDeleteDialog.value = false
 }
 
 // Reply functionality

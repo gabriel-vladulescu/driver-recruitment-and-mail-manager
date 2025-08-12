@@ -2,15 +2,14 @@
   <div 
     class="message-item" 
     :class="{ 
-      'unread': !message.isRead && !isArchived, 
-      'selected': isSelected,
-      'archived': isArchived 
+      'unread': !message.isRead, 
+      'selected': isSelected
     }"
     @click="$emit('click')"
   >
     <div class="message-icon">
       <component :is="iconComponent" class="icon" />
-      <div v-if="!message.isRead && !isArchived" class="unread-dot"></div>
+      <div v-if="!message.isRead" class="unread-dot"></div>
     </div>
     
     <div class="message-content">
@@ -21,10 +20,6 @@
       <p class="message-preview">{{ message.preview_message }}</p>
       <div class="message-meta">
         <span class="message-type" :class="typeClass">{{ typeLabel }}</span>
-        <span v-if="isArchived" class="archived-label">
-          <Archive class="archived-icon" />
-          Arhivat
-        </span>
       </div>
     </div>
   </div>
@@ -37,19 +32,16 @@ import {
   MessageCircle,
   Briefcase,
   Car,
-  Mail,
-  Archive
+  Mail
 } from 'lucide-vue-next'
 
 interface Props {
   message: Message
   isSelected?: boolean
-  isArchived?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  isSelected: false,
-  isArchived: false
+  isSelected: false
 })
 
 defineEmits<{
@@ -137,9 +129,6 @@ const formattedTime = computed(() => {
   background: linear-gradient(135deg, rgba(52, 209, 134, 0.18) 0%, rgba(40, 167, 69, 0.18) 100%);
 }
 
-.message-item.archived {
-  opacity: 0.7;
-}
 
 .message-icon {
   position: relative;
@@ -268,19 +257,6 @@ const formattedTime = computed(() => {
   color: #6b7280;
 }
 
-.archived-label {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.75rem;
-  color: #6c757d;
-  font-weight: 500;
-}
-
-.archived-icon {
-  width: 12px;
-  height: 12px;
-}
 
 @media (max-width: 768px) {
   .message-item {

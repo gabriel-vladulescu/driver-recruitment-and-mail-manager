@@ -317,7 +317,7 @@ class ImapService {
         email_from: fromParsed.address,
         email_from_name: fromParsed.name,
         email_to: toParsed.address,
-        email_mail_to: toParsed.name,
+        email_to_name: toParsed.name,
         subject: parsedEmail.subject || 'No Subject',
         message: parsedEmail.html || parsedEmail.text || '',
         custom_data: {
