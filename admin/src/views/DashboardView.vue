@@ -22,6 +22,7 @@
         :view="selectedInboxView"
         @select-email="handleSelectEmail"
         @emailUpdated="handleEmailUpdated"
+        @paginationUpdated="handlePaginationUpdated"
         @fetch-started="startEmailFetch"
         @fetch-progress="updateEmailFetchProgress"
         @fetch-ended="endEmailFetch"
@@ -65,6 +66,7 @@ import MessageDetail from '@/components/MessageDetail.vue'
 import SentMessageDetail from '@/components/SentMessageDetail.vue'
 import InboxEmailList from '@/components/InboxEmailList.vue'
 import InboxEmailDetail from '@/components/InboxEmailDetail.vue'
+import '@/assets/dashboard.css'
 
 // Types from AppSidebar
 interface SelectedView {
@@ -122,6 +124,13 @@ function handleBackToList() {
   selectedInboxEmail.value = null
 }
 
+function handlePaginationUpdated(pagination: any, view: any) {
+  // Update sidebar with current view pagination data
+  if (sidebarRef.value) {
+    sidebarRef.value.updateViewCounts(view, pagination)
+  }
+}
+
 async function handleEmailUpdated() {
   // Small delay to ensure database transaction is committed
   await new Promise(resolve => setTimeout(resolve, 100))
@@ -171,155 +180,3 @@ defineExpose({
   endEmailFetch
 })
 </script>
-
-<style scoped>
-.dashboard {
-  display: flex;
-  height: 100vh;
-  width: 100%;
-  background: #f8f9fa;
-  overflow: hidden;
-}
-
-.inbox-container {
-  flex: 1;
-  height: 100vh;
-  overflow: hidden;
-}
-
-/* Email Fetch Loader Styles */
-.email-fetch-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-}
-
-.fetch-loader {
-  background: white;
-  border-radius: 16px;
-  padding: 2.5rem;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
-  text-align: center;
-  min-width: 400px;
-}
-
-.loader-content h3 {
-  margin: 0 0 1.5rem 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #1a1a1a;
-}
-
-.spinner {
-  width: 60px;
-  height: 60px;
-  border: 4px solid #f0f0f0;
-  border-top: 4px solid #34d186;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 1.5rem auto;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.progress-info {
-  margin-top: 1.5rem;
-}
-
-.progress-info p {
-  margin: 0.5rem 0;
-  color: #666;
-  font-size: 1rem;
-}
-
-.progress-bar {
-  width: 100%;
-  height: 12px;
-  background: #f0f0f0;
-  border-radius: 6px;
-  overflow: hidden;
-  margin: 1rem 0;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #34d186, #28a745);
-  transition: width 0.3s ease;
-  border-radius: 6px;
-}
-
-.progress-text {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #34d186;
-}
-
-.empty-state {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-}
-
-.empty-content {
-  text-align: center;
-  max-width: 400px;
-}
-
-.empty-icon {
-  width: 80px;
-  height: 80px;
-  color: #ccc;
-  margin: 0 auto 2rem;
-}
-
-.empty-content h2 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin-bottom: 0.5rem;
-}
-
-.empty-content p {
-  color: #666;
-  font-size: 1rem;
-  line-height: 1.6;
-}
-
-@media (max-width: 768px) {
-  .dashboard {
-    flex-direction: column;
-    height: auto;
-    min-height: 100vh;
-  }
-  
-  .empty-state {
-    min-height: 400px;
-  }
-  
-  .empty-icon {
-    width: 60px;
-    height: 60px;
-    margin-bottom: 1.5rem;
-  }
-  
-  .empty-content h2 {
-    font-size: 1.3rem;
-  }
-  
-  .empty-content p {
-    font-size: 0.9rem;
-  }
-}
-</style>

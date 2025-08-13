@@ -124,7 +124,7 @@ async function fetchReplies() {
       throw new Error('Nu sunteți autentificat')
     }
 
-    const url = new URL('http://localhost:4000/api/email/sent-replies')
+    const url = new URL('/api/email/sent-replies')
     url.searchParams.append('formId', props.formId)
 
     const response = await fetch(url.toString(), {

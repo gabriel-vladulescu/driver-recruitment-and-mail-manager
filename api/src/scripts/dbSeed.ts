@@ -29,39 +29,60 @@ async function seedDatabase() {
       });
     }
     
-    // 3. Create 100 emails with inbox_type_id 1 (INTERNAL_INBOX)
-    const sampleEmails1 = [];
-    for (let i = 1; i <= 100; i++) {
-      sampleEmails1.push({
+    // 3. Create emails with mixed labeling strategy
+    const sampleEmails = [];
+    
+    // Create 50 emails for category 1 (EMAILS_RECEIVED) WITHOUT labels
+    for (let i = 1; i <= 50; i++) {
+      sampleEmails.push({
         email_from: `sender${i}@company.com`,
+        email_from_name: `Sender ${i}`,
         email_to_name: `Internal User ${i}`,
         email_to: 'internal@company.com',
-        subject: `Internal Message ${i}`,
-        message: `This is internal message number ${i} for testing purposes.`,
+        subject: `Received Message ${i}`,
+        message: `This is received message number ${i} without label.`,
         inbox_type_id: 1,
         inbox_category_id: 1,
-        inbox_label_id: (i % 10) + 1, // Rotate through labels 1-10
-        is_read: i % 3 === 0 // Mark every 3rd as read
-      });
-    }
-    await InboxEmail.bulkCreate(sampleEmails1);
-    
-    // 4. Create 100 emails with inbox_type_id 2 (EXTERNAL_FORMS)
-    const sampleEmails2 = [];
-    for (let i = 1; i <= 100; i++) {
-      sampleEmails2.push({
-        email_from: `external${i}@client.com`,
-        email_to_name: `Form Handler ${i}`,
-        email_to: 'forms@company.com',
-        subject: `External Form ${i}`,
-        message: `This is external form submission number ${i} from website contact form.`,
-        inbox_type_id: 2,
-        inbox_category_id: 1,
-        inbox_label_id: (i % 10) + 1, // Rotate through labels 1-10
+        inbox_label_id: undefined, // No label
         is_read: i % 4 === 0 // Mark every 4th as read
       });
     }
-    await InboxEmail.bulkCreate(sampleEmails2);
+    
+    // Create 25 emails for category 2 (EMAILS_SENT) WITHOUT labels  
+    for (let i = 1; i <= 25; i++) {
+      sampleEmails.push({
+        email_from: 'internal@company.com',
+        email_from_name: 'Internal System',
+        email_to_name: `External User ${i}`,
+        email_to: `external${i}@client.com`,
+        subject: `Sent Message ${i}`,
+        message: `This is sent message number ${i} without label.`,
+        inbox_type_id: 1,
+        inbox_category_id: 2,
+        inbox_label_id: undefined, // No label
+        is_read: true // Sent emails are marked as read
+      });
+    }
+    
+    // Create 50 emails WITH labels (10 emails per label)
+    for (let labelId = 1; labelId <= 10; labelId++) {
+      for (let i = 1; i <= 5; i++) {
+        sampleEmails.push({
+          email_from: `labeled${labelId}_${i}@company.com`,
+          email_from_name: `Labeled Sender ${labelId}-${i}`,
+          email_to_name: `Label User ${labelId}-${i}`,
+          email_to: 'labels@company.com',
+          subject: `Labeled Message ${labelId}-${i}`,
+          message: `This is labeled message ${i} for label ${labelId}.`,
+          inbox_type_id: 1,
+          inbox_category_id: 1,
+          inbox_label_id: labelId,
+          is_read: i % 2 === 0 // Mark every 2nd as read
+        });
+      }
+    }
+    
+    await InboxEmail.bulkCreate(sampleEmails);
     
     console.log('✅ Database seeding completed');
     

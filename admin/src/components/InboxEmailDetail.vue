@@ -247,6 +247,7 @@
 import { ref, computed, watch } from 'vue'
 import axios from 'axios'
 import DOMPurify from 'dompurify'
+import { useToastStore } from '@/stores/toast'
 import {
   Mail, MailOpen, Tag, Trash2, X, Paperclip, Calendar, User,
   Briefcase, Bookmark, Star, Heart, Flag, Archive, RotateCcw, ArrowLeft,
@@ -275,6 +276,7 @@ const emit = defineEmits<{
 }>()
 
 // State
+const toastStore = useToastStore()
 const showLabelModal = ref(false)
 const selectedLabelId = ref<number | null>(null)
 const availableLabels = ref<any[]>([])
@@ -445,7 +447,7 @@ const toggleReadStatus = async () => {
   
   try {
     await axios.patch(
-      `http://localhost:4000/api/inbox/emails/${props.email.id}/read`,
+      `/api/inbox/emails/${props.email.id}/read`,
       { is_read: !props.email.is_read }
     )
     
@@ -466,12 +468,14 @@ const confirmDelete = async () => {
   
   isDeleting.value = true
   try {
-    await axios.delete(`http://localhost:4000/api/inbox/emails/${props.email.id}`)
+    await axios.delete(`/api/inbox/emails/${props.email.id}`)
     emit('emailDeleted', props.email.id)
     emit('emailUpdated')
     showDeleteDialog.value = false
+    toastStore.success('Email-ul a fost mutat în coșul de gunoi')
   } catch (err) {
     console.error('Error deleting email:', err)
+    toastStore.error('Eroare la ștergerea email-ului')
   } finally {
     isDeleting.value = false
   }
@@ -491,7 +495,7 @@ const assignLabel = async () => {
   
   try {
     await axios.patch(
-      `http://localhost:4000/api/inbox/emails/${props.email.id}/label`,
+      `/api/inbox/emails/${props.email.id}/label`,
       { inbox_label_id: selectedLabelId.value }
     )
     
@@ -510,7 +514,7 @@ const assignLabel = async () => {
 
 const fetchLabels = async () => {
   try {
-    const response = await axios.get('http://localhost:4000/api/inbox/labels')
+    const response = await axios.get('/api/inbox/labels')
     availableLabels.value = response.data.data
   } catch (err) {
     console.error('Error fetching labels:', err)
@@ -522,12 +526,13 @@ const restoreEmail = async () => {
   if (!props.email) return
   
   try {
-    await axios.post(`http://localhost:4000/api/inbox/emails/${props.email.id}/restore`)
+    await axios.post(`/api/inbox/emails/${props.email.id}/restore`)
     emit('emailUpdated')
     emit('backToList') // Return to list after restore
+    toastStore.success('Email-ul a fost restaurat cu succes')
   } catch (error: any) {
     console.error('Error restoring email:', error)
-    alert(error.response?.data?.message || 'Eroare la restaurarea email-ului')
+    toastStore.error(error.response?.data?.message || 'Eroare la restaurarea email-ului')
   }
 }
 
@@ -541,12 +546,14 @@ const confirmPermanentDelete = async () => {
   
   isDeleting.value = true
   try {
-    await axios.delete(`http://localhost:4000/api/inbox/emails/${props.email.id}/permanent`)
+    await axios.delete(`/api/inbox/emails/${props.email.id}/permanent`)
     emit('emailDeleted', props.email.id)
     emit('backToList')
     showPermanentDeleteDialog.value = false
+    toastStore.success('Email-ul a fost șters definitiv')
   } catch (error: any) {
     console.error('Error permanently deleting email:', error)
+    toastStore.error(error.response?.data?.message || 'Eroare la ștergerea definitivă')
     // Show error in dialog or toast instead of alert
   } finally {
     isDeleting.value = false

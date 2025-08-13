@@ -97,12 +97,19 @@ export const parsePaginationParams = (page?: string | number, limit?: string | n
 export const calculatePaginationMeta = (
   total: number, 
   page: number, 
-  limit: number
+  limit: number,
+  unread?: number
 ) => {
-  return {
+  const meta: any = {
     total,
     page,
     limit,
     totalPages: Math.ceil(total / limit)
   };
+  
+  if (unread !== undefined) {
+    meta.unread = unread;
+  }
+  
+  return meta;
 };

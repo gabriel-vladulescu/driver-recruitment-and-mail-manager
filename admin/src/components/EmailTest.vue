@@ -44,7 +44,7 @@ async function testConnection() {
       throw new Error('Nu sunteți autentificat')
     }
 
-    const response = await fetch('http://localhost:4000/api/email/test-connection', {
+    const response = await fetch('/api/email/test-connection', {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,

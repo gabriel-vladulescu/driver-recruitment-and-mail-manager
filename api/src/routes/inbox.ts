@@ -15,7 +15,8 @@ import {
   testImapConnection,
   getDeletedEmails,
   restoreEmail,
-  permanentlyDeleteEmail
+  permanentlyDeleteEmail,
+  getEmailCounts
 } from '../controllers/inboxController';
 
 const router = Router();
@@ -38,6 +39,9 @@ router.delete('/labels/:id', deleteLabel);
 
 // Categories
 router.get('/categories', getCategories);
+
+// Email counts
+router.get('/counts', getEmailCounts);
 
 // Email fetching from server
 router.post('/fetch-emails', fetchEmailsFromServer);

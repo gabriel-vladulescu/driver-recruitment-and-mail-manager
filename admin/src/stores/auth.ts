@@ -2,7 +2,11 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+if (!API_BASE_URL) {
+  throw new Error('VITE_API_BASE_URL is not defined. Please set it in your environment variables.');
+}
 
 export interface User {
   id: string
@@ -10,13 +14,13 @@ export interface User {
 }
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref<User | null>(null)
-  const token = ref<string | null>(localStorage.getItem('admin_token'))
-
-  const isAuthenticated = computed(() => !!token.value && !!user.value)
+  const user = ref<User | null>(null);
+  const token = ref<string | null>(localStorage.getItem('admin_token'));
+  const isAuthenticated = computed(() => !!token.value && !!user.value);
 
   // Configure axios defaults
   const configureAxios = () => {
+    axios.defaults.baseURL = API_BASE_URL;
     if (token.value) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
     } else {
@@ -28,7 +32,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function login(email: string, password: string) {
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+      const response = await axios.post('/api/auth/login', {
         email,
         password
       })

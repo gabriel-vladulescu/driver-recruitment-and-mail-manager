@@ -312,7 +312,7 @@ async function handleEmailSend(emailData: {
       return
     }
 
-    const response = await fetch('http://localhost:4000/api/email/reply', {
+    const response = await fetch('/api/email/reply', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

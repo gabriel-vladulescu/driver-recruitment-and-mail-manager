@@ -7,7 +7,7 @@ import { sendErrorResponse, sendSuccessResponse, validateEntityExists, sanitizeS
 
 export const getEmails = async (req: Request, res: Response) => {
   try {
-    const { category, label, page, limit, search } = req.query as InboxEmailQuery;
+    const { category, inbox_category_id, label, page, limit, search } = req.query as InboxEmailQuery;
     
     // Parse pagination with validation
     const { page: parsedPage, limit: parsedLimit, offset } = parsePaginationParams(page, limit);
@@ -15,32 +15,28 @@ export const getEmails = async (req: Request, res: Response) => {
     // Build where clause efficiently
     const whereClause: WhereClause = {};
     
-    // Use Promise.all to fetch category and label concurrently if needed
-    const promises = [];
-    if (category) {
-      promises.push(InboxCategory.findOne({ where: { category } }));
-    }
-    if (label && category) {
-      promises.push(InboxLabel.findOne({ where: { id: label } }));
+    // Handle category filtering
+    if (inbox_category_id) {
+      // Direct category ID filtering (preferred method)
+      whereClause.inbox_category_id = parseInt(inbox_category_id);
+      // When filtering by category, exclude labeled emails (they appear only in label views)
+      (whereClause as any).inbox_label_id = null;
+    } else if (category) {
+      // Legacy category name filtering (for backward compatibility)
+      const inboxCategory = await InboxCategory.findOne({ where: { category } });
+      if (inboxCategory) {
+        whereClause.inbox_category_id = inboxCategory.id;
+        // When filtering by category, exclude labeled emails (they appear only in label views)
+        (whereClause as any).inbox_label_id = null;
+      }
     } else if (label) {
-      promises.push(null, InboxLabel.findOne({ where: { id: label } }));
+      // Label filtering
+      const labelId = parseInt(label);
+      if (!isNaN(labelId)) {
+        whereClause.inbox_label_id = labelId;
+      }
     }
-    
-    const [inboxCategory, inboxLabel] = await Promise.all(promises);
-    
-    if (category && inboxCategory) {
-      whereClause.inbox_category_id = inboxCategory.id;
-      // If querying by category, exclude emails that have labels assigned
-      // This makes labeled emails show only in their label view
-      whereClause.inbox_label_id = null;
-    } else if (label && inboxLabel) {
-      // If querying by label, show only emails with this specific label
-      whereClause.inbox_label_id = inboxLabel.id;
-    } else if (!label) {
-      // If no category and no label specified (All Messages view), 
-      // exclude emails that have labels assigned
-      whereClause.inbox_label_id = null;
-    }
+    // For "All Messages" view (no category and no label), show ALL emails including labeled ones
     
     if (search) {
       const sanitizedSearch = sanitizeSearchInput(search);
@@ -64,7 +60,11 @@ export const getEmails = async (req: Request, res: Response) => {
       offset
     });
 
-    const paginationMeta = calculatePaginationMeta(emails.count, parsedPage, parsedLimit);
+    // Calculate unread count for the same filter criteria
+    const unreadWhereClause = { ...whereClause, is_read: false };
+    const unreadCount = await InboxEmail.count({ where: unreadWhereClause });
+
+    const paginationMeta = calculatePaginationMeta(emails.count, parsedPage, parsedLimit, unreadCount);
 
     sendSuccessResponse<EmailsWithPagination>(res, {
       emails: emails.rows,
@@ -534,6 +534,84 @@ export const permanentlyDeleteEmail = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Eroare la ștergerea definitivă'
+    });
+  }
+};
+
+export const getEmailCounts = async (req: Request, res: Response) => {
+  try {
+    // Get all emails count 
+    const totalCount = await InboxEmail.count();
+    
+    // Get category counts (emails without labels)
+    const categories = await InboxCategory.findAll();
+    const categoryCounts = await Promise.all(
+      categories.map(async (category) => {
+        const total = await InboxEmail.count({
+          where: {
+            inbox_category_id: category.id,
+            inbox_label_id: null
+          } as any
+        });
+        const unread = await InboxEmail.count({
+          where: {
+            inbox_category_id: category.id,
+            inbox_label_id: null,
+            is_read: false
+          } as any
+        });
+        return {
+          id: category.id,
+          category: category.category,
+          name: category.name,
+          total,
+          unread
+        };
+      })
+    );
+
+    // Get label counts
+    const labels = await InboxLabel.findAll();
+    const labelCounts = await Promise.all(
+      labels.map(async (label) => {
+        const total = await InboxEmail.count({
+          where: {
+            inbox_label_id: label.id
+          }
+        });
+        return {
+          id: label.id,
+          label: label.label,
+          total
+        };
+      })
+    );
+
+    // Get trash count
+    const trashCount = await InboxDeleted.count();
+
+    // Calculate total unread count across all emails
+    const totalUnreadCount = await InboxEmail.count({
+      where: {
+        is_read: false
+      }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        total: totalCount,
+        totalUnread: totalUnreadCount,
+        categories: categoryCounts,
+        labels: labelCounts,
+        trash: trashCount
+      }
+    });
+  } catch (error) {
+    console.error('Get email counts error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Eroare la obținerea count-urilor'
     });
   }
 };

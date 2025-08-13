@@ -15,6 +15,7 @@ export interface SearchQuery extends PaginationQuery {
 
 export interface InboxEmailQuery extends SearchQuery {
   category?: string;
+  inbox_category_id?: string;
   label?: string;
 }
 

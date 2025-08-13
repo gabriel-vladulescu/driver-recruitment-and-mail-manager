@@ -25,7 +25,10 @@
       "Bash(PORT=4001 npm run dev)",
       "Bash(git rm:*)",
       "Bash(git commit:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(timeout:*)",
+      "Bash(tasklist:*)",
+      "Bash(ping:*)"
     ],
     "deny": []
   }

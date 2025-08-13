@@ -12,7 +12,12 @@
         </div>
         <div class="header-text">
           <h2>{{ getViewTitle() }}</h2>
-          <p v-if="emails.length > 0">{{ emails.length }} email{{ emails.length !== 1 ? '-uri' : '' }}</p>
+          <p v-if="currentPagination?.total > 0">
+            {{ currentPagination.total }} email{{ currentPagination.total !== 1 ? '-uri' : '' }}
+            <span v-if="currentPagination?.unread > 0" class="unread-text">
+              ({{ currentPagination.unread }} necitit{{ currentPagination.unread !== 1 ? 'e' : '' }})
+            </span>
+          </p>
         </div>
       </div>
       
@@ -280,6 +285,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import axios from 'axios'
+import { useToastStore } from '@/stores/toast'
 import {
   Mail, Send, Tag, Inbox, RefreshCw, Download, Search, X, Loader, AlertCircle,
   MailOpen, ChevronLeft, ChevronRight, Briefcase, Bookmark, Star, Heart, Flag, Archive, Trash2, RotateCcw
@@ -301,18 +307,21 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   selectEmail: [email: any]
   emailUpdated: []
+  paginationUpdated: [pagination: any, view: any]
   fetchStarted: []
   fetchProgress: [processed: number, total: number]
   fetchEnded: []
 }>()
 
 // State
+const toastStore = useToastStore()
 const emails = ref<any[]>([])
 const loading = ref(false)
 const error = ref('')
 const searchQuery = ref('')
 const currentPage = ref(1)
 const totalPages = ref(1)
+const currentPagination = ref<any>(null)  // Store pagination data
 const selectedEmailIds = ref<number[]>([])  // For bulk selection in trash
 const showDeleteDialog = ref(false)
 const showBulkDeleteDialog = ref(false)
@@ -351,12 +360,12 @@ const fetchEmails = async () => {
     let url
     
     if (props.view.type === 'trash') {
-      url = `http://localhost:4000/api/inbox/trash?page=${currentPage.value}&limit=${pageSize}`
+      url = `/api/inbox/trash?page=${currentPage.value}&limit=${pageSize}`
     } else {
-      url = `http://localhost:4000/api/inbox/emails?page=${currentPage.value}&limit=${pageSize}`
+      url = `/api/inbox/emails?page=${currentPage.value}&limit=${pageSize}`
       
-      if (props.view.type === 'category' && props.view.data) {
-        url += `&category=${props.view.data.category}`
+      if (props.view.type === 'category' && props.view.id) {
+        url += `&inbox_category_id=${props.view.id}`
       } else if (props.view.type === 'label' && props.view.id) {
         url += `&label=${props.view.id}`
       }
@@ -370,9 +379,10 @@ const fetchEmails = async () => {
     
     emails.value = response.data.data.emails
     totalPages.value = response.data.data.pagination.totalPages
+    currentPagination.value = response.data.data.pagination  // Store pagination data
     
-    // Emit update event to refresh sidebar counts
-    emit('emailUpdated')
+    // Emit pagination data to update sidebar badges with current view data
+    emit('paginationUpdated', response.data.data.pagination, props.view)
     
   } catch (err: any) {
     error.value = err.response?.data?.message || 'Eroare la încărcarea email-urilor'
@@ -391,7 +401,7 @@ const fetchEmailsFromServer = async () => {
     // Start the fetch process with initial progress
     emit('fetchProgress', 0, 100)
     
-    const response = await axios.post('http://localhost:4000/api/inbox/fetch-emails', {})
+    const response = await axios.post('/api/inbox/fetch-emails', {})
     
     // Simulate progress updates (since we don't have real-time progress yet)
     emit('fetchProgress', 50, 100)
@@ -439,7 +449,7 @@ const selectEmail = async (email: any) => {
 const markAsRead = async (email: any) => {
   try {
     await axios.patch(
-      `http://localhost:4000/api/inbox/emails/${email.id}/read`,
+      `/api/inbox/emails/${email.id}/read`,
       { is_read: true }
     )
     
@@ -457,7 +467,7 @@ const markAsRead = async (email: any) => {
 const toggleReadStatus = async (email: any, updateUI = true) => {
   try {
     await axios.patch(
-      `http://localhost:4000/api/inbox/emails/${email.id}/read`,
+      `/api/inbox/emails/${email.id}/read`,
       { is_read: !email.is_read }
     )
     
@@ -480,7 +490,7 @@ const showLabelModal = async (email: any) => {
   
   // Fetch available labels
   try {
-    const response = await axios.get('http://localhost:4000/api/inbox/labels')
+    const response = await axios.get('/api/inbox/labels')
     availableLabels.value = response.data.data
   } catch (err) {
     console.error('Error fetching labels:', err)
@@ -500,7 +510,7 @@ const assignLabel = async () => {
   
   try {
     await axios.patch(
-      `http://localhost:4000/api/inbox/emails/${selectedEmailForLabel.value.id}/label`,
+      `/api/inbox/emails/${selectedEmailForLabel.value.id}/label`,
       { inbox_label_id: selectedLabelId.value }
     )
     
@@ -609,7 +619,7 @@ const toggleSelectAll = () => {
 
 const restoreEmail = async (email: any) => {
   try {
-    await axios.post(`http://localhost:4000/api/inbox/emails/${email.id}/restore`)
+    await axios.post(`/api/inbox/emails/${email.id}/restore`)
     
     // Remove from current list
     const index = emails.value.findIndex(e => e.id === email.id)
@@ -624,9 +634,10 @@ const restoreEmail = async (email: any) => {
     }
     
     emit('emailUpdated')
+    toastStore.success('Email-ul a fost restaurat cu succes')
   } catch (error: any) {
     console.error('Error restoring email:', error)
-    alert(error.response?.data?.message || 'Eroare la restaurarea email-ului')
+    toastStore.error(error.response?.data?.message || 'Eroare la restaurarea email-ului')
   }
 }
 
@@ -640,7 +651,7 @@ const confirmPermanentDelete = async () => {
   
   isDeleting.value = true
   try {
-    await axios.delete(`http://localhost:4000/api/inbox/emails/${emailToDelete.value.id}/permanent`)
+    await axios.delete(`/api/inbox/emails/${emailToDelete.value.id}/permanent`)
     
     // Remove from current list
     const index = emails.value.findIndex(e => e.id === emailToDelete.value.id)
@@ -657,8 +668,10 @@ const confirmPermanentDelete = async () => {
     emit('emailUpdated')
     showDeleteDialog.value = false
     emailToDelete.value = null
+    toastStore.success('Email-ul a fost șters definitiv')
   } catch (error: any) {
     console.error('Error permanently deleting email:', error)
+    toastStore.error(error.response?.data?.message || 'Eroare la ștergerea definitivă')
   } finally {
     isDeleting.value = false
   }
@@ -680,11 +693,12 @@ const confirmBulkDelete = async () => {
   if (selectedEmailIds.value.length === 0) return
   
   isDeleting.value = true
+  const emailCount = selectedEmailIds.value.length
   try {
     // Delete emails one by one
     const emailsToDelete = [...selectedEmailIds.value]
     for (const emailId of emailsToDelete) {
-      await axios.delete(`http://localhost:4000/api/inbox/emails/${emailId}/permanent`)
+      await axios.delete(`/api/inbox/emails/${emailId}/permanent`)
     }
     
     // Remove all selected emails from list
@@ -693,8 +707,10 @@ const confirmBulkDelete = async () => {
     
     emit('emailUpdated')
     showBulkDeleteDialog.value = false
+    toastStore.success(`${emailCount} email${emailCount !== 1 ? '-uri au fost șterse' : ' a fost șters'} definitiv`)
   } catch (error: any) {
     console.error('Error bulk deleting emails:', error)
+    toastStore.error(error.response?.data?.message || 'Eroare la ștergerea în masă')
   } finally {
     isDeleting.value = false
   }
@@ -775,6 +791,11 @@ onMounted(() => {
   margin: 0;
   color: #666;
   font-size: 0.9rem;
+}
+
+.unread-text {
+  color: #34d186;
+  font-weight: 600;
 }
 
 .header-actions {
