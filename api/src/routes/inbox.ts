@@ -2,20 +2,20 @@ import { Router } from 'express';
 import { authenticateToken } from '../middleware/auth';
 import {
   getEmails,
-  getEmailById,
-  updateEmailReadStatus,
-  updateEmailLabel,
-  deleteEmail,
   getLabels,
   createLabel,
   updateLabel,
   deleteLabel,
   getCategories,
-  fetchEmailsFromServer,
-  testImapConnection,
-  getDeletedEmails,
-  restoreEmail,
-  permanentlyDeleteEmail,
+  getEmailsFromTrash,
+  getEmailsFromArchive,
+  restoreFromTrash,
+  restoreFromArchive,
+  cleanTrash,
+  moveToTrash,
+  moveToLabel,
+  moveToArchive,
+  markAsRead,
   getEmailCounts
 } from '../controllers/inboxController';
 
@@ -26,10 +26,8 @@ router.use(authenticateToken);
 
 // Email management
 router.get('/emails', getEmails);
-router.get('/emails/:id', getEmailById);
-router.patch('/emails/:id/read', updateEmailReadStatus);
-router.patch('/emails/:id/label', updateEmailLabel);
-router.delete('/emails/:id', deleteEmail);
+router.post('/emails/read', markAsRead);
+router.post('/emails/label/:labelId', moveToLabel);
 
 // Label management
 router.get('/labels', getLabels);
@@ -40,16 +38,18 @@ router.delete('/labels/:id', deleteLabel);
 // Categories
 router.get('/categories', getCategories);
 
-// Email counts
+// Counts
 router.get('/counts', getEmailCounts);
 
-// Email fetching from server
-router.post('/fetch-emails', fetchEmailsFromServer);
-router.get('/test-imap', testImapConnection);
-
 // Trash management
-router.get('/trash', getDeletedEmails);
-router.post('/emails/:id/restore', restoreEmail);
-router.delete('/emails/:id/permanent', permanentlyDeleteEmail);
+router.get('/trash', getEmailsFromTrash);
+router.post('/trash', moveToTrash);
+router.post('/trash/restore', restoreFromTrash);
+router.post('/trash/clean', cleanTrash);
+
+// Archive management
+router.get('/archive', getEmailsFromArchive);
+router.post('/archive', moveToArchive);
+router.post('/archive/restore', restoreFromArchive);
 
 export default router;

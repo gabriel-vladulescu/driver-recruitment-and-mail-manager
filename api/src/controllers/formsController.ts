@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import { Op } from 'sequelize';
 import { InboxEmail, InboxType, InboxCategory } from '../models';
 import { ApiResponse, FormCustomData } from '../types';
 

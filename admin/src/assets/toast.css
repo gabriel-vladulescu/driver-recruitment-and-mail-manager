@@ -1,62 +1,16 @@
-<template>
-  <div class="toast-container">
-    <Transition name="toast" appear>
-      <div v-if="visible" class="toast" :class="[type]">
-        <div class="toast-icon">
-          <CheckCircle v-if="type === 'success'" class="icon" />
-          <AlertCircle v-else-if="type === 'error'" class="icon" />
-          <Info v-else-if="type === 'info'" class="icon" />
-          <AlertTriangle v-else class="icon" />
-        </div>
-        <div class="toast-content">
-          <p class="toast-message">{{ message }}</p>
-        </div>
-        <button @click="$emit('close')" class="toast-close">
-          <X class="close-icon" />
-        </button>
-      </div>
-    </Transition>
-  </div>
-</template>
-
-<script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { CheckCircle, AlertCircle, Info, AlertTriangle, X } from 'lucide-vue-next'
-
-interface Props {
-  message: string
-  type?: 'success' | 'error' | 'info' | 'warning'
-  duration?: number
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  type: 'info',
-  duration: 4000
-})
-
-const emit = defineEmits<{
-  close: []
-}>()
-
-const visible = ref(false)
-
-onMounted(() => {
-  visible.value = true
-  
-  if (props.duration > 0) {
-    setTimeout(() => {
-      emit('close')
-    }, props.duration)
-  }
-})
-</script>
-
-<style scoped>
 .toast-container {
   position: fixed;
   top: 20px;
   right: 20px;
   z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  pointer-events: none;
+}
+
+.toast-container > * {
+  pointer-events: all;
 }
 
 .toast {
@@ -139,6 +93,7 @@ onMounted(() => {
   background: #f8f9fa;
 }
 
+/* Close icon for toast - specific size needed */
 .close-icon {
   width: 16px;
   height: 16px;
@@ -164,6 +119,10 @@ onMounted(() => {
   transform: translateX(100px);
 }
 
+.toast-move {
+  transition: transform 0.3s ease;
+}
+
 @media (max-width: 768px) {
   .toast-container {
     top: 10px;
@@ -176,4 +135,3 @@ onMounted(() => {
     max-width: none;
   }
 }
-</style>

@@ -131,7 +131,6 @@ InboxEmail.init({
   sequelize,
   tableName: 'inbox_emails',
   timestamps: true,
-  paranoid: true
 });
 
 // Define associations

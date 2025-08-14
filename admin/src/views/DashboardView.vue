@@ -5,9 +5,8 @@
       @select-message="handleSelectMessage" 
       @select-inbox-view="handleInboxViewChange" 
     />
-    <MessageDetail v-if="selectedMessage" />
-    <SentMessageDetail v-else-if="selectedSentMessage" />
-    <div v-else-if="selectedInboxView" class="inbox-container">
+  
+    <div v-if="selectedInboxView" class="inbox-container">
       <InboxEmailDetail 
         v-if="selectedInboxEmail"
         :email="selectedInboxEmail"
@@ -58,12 +57,11 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed, ref } from 'vue'
+import { onMounted, computed, ref, watch } from 'vue'
 import { useMessagesStore } from '@/stores/messages'
+import { useEmailStore } from '@/stores/emailStore'
 import { MessageCircle } from 'lucide-vue-next'
 import AppSidebar from '@/components/AppSidebar.vue'
-import MessageDetail from '@/components/MessageDetail.vue'
-import SentMessageDetail from '@/components/SentMessageDetail.vue'
 import InboxEmailList from '@/components/InboxEmailList.vue'
 import InboxEmailDetail from '@/components/InboxEmailDetail.vue'
 import '@/assets/dashboard.css'
@@ -71,11 +69,12 @@ import '@/assets/dashboard.css'
 // Types from AppSidebar
 interface SelectedView {
   type: 'category' | 'label' | 'all' | 'trash'
-  id?: number
+  id?: string | number
   data?: any
 }
 
 const messagesStore = useMessagesStore()
+const emailStore = useEmailStore()
 
 // State
 const selectedInboxView = ref<SelectedView | null>(null)
@@ -95,14 +94,12 @@ const selectedMessage = computed(() => messagesStore.selectedMessage)
 const selectedSentMessage = computed(() => messagesStore.selectedSentMessage)
 
 onMounted(() => {
-  messagesStore.fetchMessages()
+
 })
 
 function handleSelectMessage(messageId: string) {
   const message = messagesStore.messages.find(m => m.id === messageId)
   if (message) {
-    messagesStore.selectMessage(message)
-    // Clear inbox selections
     selectedInboxView.value = null
     selectedInboxEmail.value = null
   }
@@ -110,9 +107,6 @@ function handleSelectMessage(messageId: string) {
 
 function handleInboxViewChange(view: SelectedView) {
   selectedInboxView.value = view
-  // Clear other selections
-  messagesStore.selectMessage(null)
-  messagesStore.selectSentMessage(null)
   selectedInboxEmail.value = null
 }
 
@@ -172,6 +166,12 @@ function endEmailFetch() {
   isFetchingEmails.value = false
   fetchProgress.value = { processed: 0, total: 0, percentage: 0 }
 }
+
+// Watch for email updates from store to refresh sidebar
+watch(() => emailStore.updateTrigger, async () => {
+  // Use existing handleEmailUpdated function to refresh sidebar counts
+  await handleEmailUpdated();
+})
 
 // Expose fetch control methods
 defineExpose({

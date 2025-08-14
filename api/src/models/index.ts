@@ -5,6 +5,8 @@ import InboxCategory from './InboxCategory';
 import InboxLabel from './InboxLabel';
 import InboxEmail from './InboxEmail';
 import InboxDeleted from './InboxDeleted';
+import InboxArchive from './InboxArchive';
+import InboxTrash from './InboxTrash';
 
 export {
   sequelize,
@@ -14,4 +16,6 @@ export {
   InboxLabel,
   InboxEmail,
   InboxDeleted,
+  InboxArchive,
+  InboxTrash,
 };

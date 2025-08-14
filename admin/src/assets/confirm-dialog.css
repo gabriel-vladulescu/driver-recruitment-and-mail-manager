@@ -1,0 +1,30 @@
+/* ConfirmDialog now uses standard modal structure - custom styles only */
+.modal-container.confirm-dialog {
+  max-width: 440px;
+}
+
+/* Center dialog content and icon layout */
+.modal-body .dialog-content {
+  text-align: center;
+}
+
+.modal-header .dialog-icon {
+  margin-bottom: 0;
+  margin-right: 0.75rem;
+}
+
+/* Spinning animation for loading buttons */
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.btn-icon, .btn-loader {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}

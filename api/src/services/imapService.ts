@@ -37,12 +37,10 @@ class ImapService {
   private connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       this.imap.once('ready', () => {
-        console.log('✅ IMAP connection established');
         resolve();
       });
 
       this.imap.once('error', (err: Error) => {
-        console.error('❌ IMAP connection error:', err);
         reject(err);
       });
 
@@ -66,73 +64,19 @@ class ImapService {
     });
   }
 
-  private fetchEmail(msgId: number): Promise<ParsedMail> {
-    return new Promise((resolve, reject) => {
-      const fetch = this.imap.fetch([msgId], {
-        bodies: '',
-        struct: true,
-        envelope: true
-      });
-      
-      let envelopeData: any = null;
-
-      fetch.on('message', (msg) => {
-        let body = '';
-        
-        msg.on('attributes', (attrs: any) => {
-          envelopeData = attrs.envelope;
-          console.log('📧 IMAP Envelope data:', envelopeData);
-        });
-
-        msg.on('body', (stream) => {
-          stream.on('data', (chunk) => {
-            body += chunk.toString('utf8');
-          });
-        });
-
-        msg.once('end', async () => {
-          try {
-            const parsed = await simpleParser(body);
-            // Add envelope data to parsed object
-            if (envelopeData) {
-              (parsed as any).envelope = envelopeData;
-            }
-            resolve(parsed);
-          } catch (error) {
-            reject(error);
-          }
-        });
-      });
-
-      fetch.once('error', reject);
-      fetch.once('end', () => {
-        console.log('Email fetch completed');
-      });
-    });
-  }
-
   private async saveEmailToDatabase(parsedEmail: ParsedMail, category: 'EMAILS_RECEIVED' | 'EMAILS_SENT'): Promise<InboxEmail | null> {
     try {
-      // Get inbox type (default to INTERNAL_INBOX)
       const inboxType = await InboxType.findOne({ where: { type: 'INTERNAL_INBOX' } });
-      if (!inboxType) {
-        console.error('❌ Inbox type not found');
-        return null;
-      }
-
-      // Get inbox category
       const inboxCategory = await InboxCategory.findOne({ where: { category } });
-      if (!inboxCategory) {
-        console.error('❌ Inbox category not found');
-        return null;
+
+      if (!inboxType) {
+        throw new Error('Inbox type INTERNAL_INBOX not found');
       }
 
-      // Extract email addresses and names with better parsing
-      console.log('🔍 Full parsed email object keys:', Object.keys(parsedEmail));
-      console.log('📧 Parsing email from:', JSON.stringify(parsedEmail.from, null, 2));
-      console.log('📧 Parsing email to:', JSON.stringify(parsedEmail.to, null, 2));
-      console.log('📧 Envelope data:', (parsedEmail as any).envelope);
-      
+      if (!inboxCategory) {
+        throw new Error(`Inbox category ${category} not found`);
+      }
+
       // Try to get from and to from different sources
       let fromRaw: any = parsedEmail.from;
       let toRaw: any = parsedEmail.to;
@@ -143,13 +87,11 @@ class ImapService {
         if (envelope.from && envelope.from.length > 0) {
           const envFrom = envelope.from[0];
           fromRaw = `${envFrom.name || ''} <${envFrom.mailbox}@${envFrom.host}>`;
-          console.log('📧 Using envelope from:', fromRaw);
         }
         
         if (envelope.to && envelope.to.length > 0) {
           const envTo = envelope.to[0];
           toRaw = `${envTo.name || ''} <${envTo.mailbox}@${envTo.host}>`;
-          console.log('📧 Using envelope to:', toRaw);
         }
       }
       
@@ -157,22 +99,17 @@ class ImapService {
       if (!fromRaw || (Array.isArray(fromRaw) && fromRaw.length === 0) || (typeof fromRaw === 'object' && Object.keys(fromRaw).length === 0)) {
         const fromHeader = parsedEmail.headerLines?.find(h => h.key.toLowerCase() === 'from');
         if (fromHeader && fromHeader.line) {
-          console.log('📧 Using from header line:', fromHeader.line);
-          fromRaw = fromHeader.line.replace(/^[^:]+:\s*/, ''); // Remove "From: " prefix
+          fromRaw = fromHeader.line.replace(/^[^:]+:\s*/, '');
         }
       }
       
       if (!toRaw || (Array.isArray(toRaw) && toRaw.length === 0) || (typeof toRaw === 'object' && Object.keys(toRaw).length === 0)) {
         const toHeader = parsedEmail.headerLines?.find(h => h.key.toLowerCase() === 'to');
         if (toHeader && toHeader.line) {
-          console.log('📧 Using to header line:', toHeader.line);
-          toRaw = toHeader.line.replace(/^[^:]+:\s*/, ''); // Remove "To: " prefix
+          toRaw = toHeader.line.replace(/^[^:]+:\s*/, '');
         }
       }
-      
-      console.log('📧 Final fromRaw:', fromRaw);
-      console.log('📧 Final toRaw:', toRaw);
-      
+
       // Extract name and email with fallbacks
       const extractNameAndEmail = (addressObj: any) => {
         if (!addressObj) return { name: 'Unknown', address: '' };
@@ -185,9 +122,8 @@ class ImapService {
           address = addressObj.address;
         } else if (addressObj.address) {
           address = addressObj.address;
-          name = addressObj.address.split('@')[0]; // Use part before @ as fallback name
+          name = addressObj.address.split('@')[0];
         } else if (typeof addressObj === 'string') {
-          // Handle string format like "Name <email@domain.com>"
           const match = addressObj.match(/^(.+?)\s*<(.+)>$/);
           if (match) {
             name = match[1].trim();
@@ -206,8 +142,7 @@ class ImapService {
       const toParsed = extractNameAndEmail(toRaw);
       
       if (!fromParsed.address) {
-        console.error('❌ Missing from address after parsing');
-        return null;
+        throw new Error('Missing from address after parsing');
       }
       
       
@@ -228,9 +163,7 @@ class ImapService {
           messageId = messageIdHeader.line.replace(/^[^:]+:\s*/, '').trim();
         }
       }
-      
-      console.log('📧 Message-ID for duplicate check:', messageId);
-      
+  
       // Check if this email was permanently deleted before
       if (messageId) {
         console.log('🔍 Checking inbox_deleted for messageId:', messageId);
@@ -238,14 +171,11 @@ class ImapService {
           where: { message_id: messageId },
           paranoid: false // Explicitly disable paranoid mode for this query
         });
-        console.log('🔍 Found in inbox_deleted:', deletedEmail ? 'YES' : 'NO');
 
         if (deletedEmail) {
-          console.log('⚠️ Email was permanently deleted previously, skipping fetch');
           return null;
         }
       } else {
-        console.log('🔍 No messageId, using fallback check for permanently deleted emails');
         // Fallback check for permanently deleted emails without Message-ID
         const deletedEmail = await InboxDeleted.findOne({
           where: {
@@ -254,10 +184,8 @@ class ImapService {
           },
           paranoid: false // Explicitly disable paranoid mode for this query
         });
-        console.log('🔍 Found in inbox_deleted (fallback):', deletedEmail ? 'YES' : 'NO');
 
         if (deletedEmail) {
-          console.log('⚠️ Email was permanently deleted previously (fallback check), skipping fetch');
           return null;
         }
       }
@@ -290,12 +218,10 @@ class ImapService {
         });
 
         if (existingEmail) {
-          console.log('⚠️ Email already exists (Message-ID match), skipping');
           return null;
         }
       } else {
         // Fallback to old method if no Message-ID available
-        console.log('⚠️ No Message-ID found, using fallback duplicate check');
         const existingEmail = await InboxEmail.findOne({
           where: {
             email_from: fromParsed.address,
@@ -305,7 +231,6 @@ class ImapService {
         });
 
         if (existingEmail) {
-          console.log('⚠️ Email already exists (fallback match), skipping');
           return null;
         }
       }
@@ -333,11 +258,9 @@ class ImapService {
         is_read: false
       });
 
-      console.log(`✅ Email saved: ${parsedEmail.subject}`);
       return inboxEmail;
     } catch (error) {
-      console.error('❌ Error saving email to database:', error);
-      return null;
+      throw new Error(`Failed to save email to database: ${(error as Error).message}`);
     }
   }
 
@@ -469,7 +392,7 @@ class ImapService {
     }
   }
 
-  async testConnection(): Promise<{ success: boolean; message: string }> {
+  async testConnection(): Promise<{ success: boolean; count: number }> {
     try {
       await this.connect();
       const box = await this.openBox('INBOX');
@@ -477,12 +400,12 @@ class ImapService {
       
       return {
         success: true,
-        message: `Connection successful. Found ${box.messages.total} emails in inbox.`
+        count: box.messages.total
       };
     } catch (error) {
       return {
         success: false,
-        message: (error as Error).message
+        count: 0
       };
     }
   }

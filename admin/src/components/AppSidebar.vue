@@ -91,7 +91,7 @@
           <div class="section-title">
             <Tag class="section-icon" />
             Etichete
-            <button @click.stop="showLabelModal = true" class="add-label-btn">
+            <button @click.stop="showLabelModal = true; editingLabel = null;" class="add-label-btn">
               <Plus class="plus-icon" />
             </button>
           </div>
@@ -115,25 +115,62 @@
             :class="{ 'active': selectedView.type === 'label' && selectedView.id === label.id }"
             @click="selectLabelView(label)"
           >
-            <div class="label-indicator" :style="{ backgroundColor: label.color }"></div>
-            <component :is="label.icon" class="label-icon" />
+            <component 
+              :is="getIconComponent(label.icon)" 
+              class="label-icon" 
+              :style="{ 
+                color: selectedView.type === 'label' && selectedView.id === label.id ? 'white' : label.color,
+                fill: selectedView.type === 'label' && selectedView.id === label.id ? 'none' : label.color,
+                stroke: selectedView.type === 'label' && selectedView.id === label.id ? 'white' : label.color
+              }"
+            />
             <span>{{ label.label }}</span>
             <span v-if="getLabelCount(label.id) > 0" class="count-badge">
               {{ getLabelCount(label.id) }}
             </span>
             <div class="label-actions">
-              <button @click.stop="editLabel(label)" class="label-action-btn edit-btn">
-                <Edit class="action-icon" />
-              </button>
-              <button @click.stop="confirmDeleteLabel(label)" class="label-action-btn delete-btn">
-                <Trash class="action-icon" />
-              </button>
+              <div class="label-menu-dropdown">
+                <button 
+                  @click.stop="toggleLabelMenu(label.id)"
+                  class="label-menu-btn"
+                  :class="{ 'active': selectedView.type === 'label' && selectedView.id === label.id }"
+                >
+                  <MoreVertical class="menu-icon" />
+                </button>
+                <div 
+                  v-if="label.id && showLabelMenus[label.id]" 
+                  class="label-dropdown-menu"
+                  @click.stop
+                >
+                  <button @click="editingLabel = label; showLabelModal = true; closeLabelMenu(label.id)" class="dropdown-item">
+                    <Edit class="dropdown-icon" />
+                    <span>Editează</span>
+                  </button>
+                  <button @click="confirmDeleteLabel(label); closeLabelMenu(label.id)" class="dropdown-item delete-item">
+                    <Trash class="dropdown-icon" />
+                    <span>Șterge</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Removed Legacy Forms Section - now using unified Inbox system -->
+      <!-- Archive Section -->
+      <div class="messages-section archive-section">
+        <div 
+          class="section-header archive-header" 
+          @click="selectArchiveView()"
+          :class="{ 'active': selectedView.type === 'archive' }"
+        >
+          <div class="section-title">
+            <Archive class="section-icon archive-icon" />
+            <span>Arhivă</span>
+            <span v-if="archivedEmailsCount > 0" class="archive-badge">{{ archivedEmailsCount }}</span>
+          </div>
+        </div>
+      </div>
 
       <!-- Trash Section -->
       <div class="messages-section trash-section">
@@ -152,70 +189,16 @@
     </div>
 
     <!-- Label Management Modal -->
-    <div v-if="showLabelModal" class="modal-overlay" @click="closeLabelModal">
-      <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <h3>{{ editingLabel ? 'Editează Eticheta' : 'Adaugă Eticheta Nouă' }}</h3>
-          <button @click="closeLabelModal" class="close-btn">
-            <X class="close-icon" />
-          </button>
-        </div>
-        
-        <div class="modal-body">
-          <div class="form-group">
-            <label>Nume etichetă</label>
-            <input 
-              v-model="labelForm.label" 
-              type="text" 
-              placeholder="Introdu numele etichetei"
-              class="form-input"
-            />
-          </div>
-          
-          <div class="form-group">
-            <label>Culoare</label>
-            <div class="color-picker">
-              <input 
-                v-model="labelForm.color" 
-                type="color" 
-                class="color-input"
-              />
-              <input 
-                v-model="labelForm.color" 
-                type="text" 
-                placeholder="#000000"
-                class="color-text"
-              />
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label>Iconiță</label>
-            <select v-model="labelForm.icon" class="form-select">
-              <option value="Tag">Tag</option>
-              <option value="Briefcase">Briefcase</option>
-              <option value="Bookmark">Bookmark</option>
-              <option value="Star">Star</option>
-              <option value="Heart">Heart</option>
-              <option value="Archive">Archive</option>
-              <option value="Flag">Flag</option>
-            </select>
-          </div>
-        </div>
-        
-        <div class="modal-footer">
-          <button @click="closeLabelModal" class="btn-cancel">Anulează</button>
-          <button @click="saveLabel" class="btn-save" :disabled="!labelForm.label">
-            {{ editingLabel ? 'Actualizează' : 'Creează' }}
-          </button>
-        </div>
-      </div>
-    </div>
+    <LabelModal
+      :is-visible="showLabelModal"
+      :label="editingLabel"
+      @cancel="showLabelModal = false"
+    />
 
     <!-- Settings Modal -->
     <SettingsModal
       :is-visible="showSettings"
-      @close="closeSettings"
+      @cancel="closeSettings"
     />
 
     <!-- Delete Label Confirmation Modal -->
@@ -234,12 +217,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
-import '@/assets/sidebar.css';
+import { useEmailStore } from '@/stores/emailStore'
+import '@/assets/modal.css'
+import '@/assets/sidebar.css'
+import LabelModal from './modals/LabelModal.vue'
 import axios from 'axios'
+import type { Label } from '@/types'
 import {
   Shield,
   User,
@@ -249,15 +236,32 @@ import {
   Mail,
   Inbox,
   Send,
+  Archive,
   Trash2,
   Tag,
   Plus,
   X,
   Edit,
-  Trash
+  Trash,
+  Star,
+  Bookmark,
+  Heart,
+  Flag,
+  AlertCircle,
+  CheckCircle,
+  Info,
+  Zap,
+  Award,
+  Target,
+  Users,
+  Calendar,
+  File,
+  Folder,
+  Bell,
+  MoreVertical
 } from 'lucide-vue-next'
-import SettingsModal from './SettingsModal.vue'
-import ConfirmDialog from './ConfirmDialog.vue'
+import SettingsModal from './modals/SettingsModal.vue'
+import ConfirmDialog from './modals/ConfirmDialog.vue'
 
 // Types
 interface InboxCategory {
@@ -266,17 +270,12 @@ interface InboxCategory {
   name: string
 }
 
-interface InboxLabel {
-  id: number
-  label: string
-  color: string
-  icon: string
-}
+// Label replaced with Label from types
 
 interface SelectedView {
-  type: 'category' | 'label' | 'all' | 'trash'
-  id?: number
-  data?: InboxCategory | InboxLabel
+  type: 'category' | 'label' | 'all' | 'archive' | 'trash'
+  id?: string | number
+  data?: InboxCategory | Label
 }
 
 const emit = defineEmits<{
@@ -287,30 +286,56 @@ const emit = defineEmits<{
 const router = useRouter()
 const authStore = useAuthStore()
 const toastStore = useToastStore()
+const emailStore = useEmailStore()
+
+// Icon mapping for labels
+const iconComponents = {
+  Tag,
+  Star,
+  Bookmark,
+  Heart,
+  Flag,
+  AlertCircle,
+  CheckCircle,
+  Info,
+  Zap,
+  Shield,
+  Award,
+  Target,
+  Users,
+  Calendar,
+  Mail,
+  File,
+  Folder,
+  Settings,
+  Bell
+}
+
+// Helper function to get icon component
+const getIconComponent = (iconName: string) => {
+  return iconComponents[iconName as keyof typeof iconComponents] || Tag
+}
 
 // State
 const showUserMenu = ref(false)
 const showSettings = ref(false)
 const showLabelModal = ref(false)
-const editingLabel = ref<InboxLabel | null>(null)
+const editingLabel = ref<Label | null>(null)
 const showDeleteConfirm = ref(false)
-const labelToDelete = ref<InboxLabel | null>(null)
+const labelToDelete = ref<Label | null>(null)
+const showLabelMenus = ref<Record<string | number, boolean>>({})
 const sectionsCollapsed = ref<Record<string, boolean>>({
   labels: false
 })
 
 // Inbox data
 const inboxCategories = ref<InboxCategory[]>([])
-const inboxLabels = ref<InboxLabel[]>([])
+const inboxLabels = ref<Label[]>([])
 const deletedEmailsCount = ref(0)
+const archivedEmailsCount = ref(0)
 const selectedView = ref<SelectedView>({ type: 'all' })
 
-// Label form
-const labelForm = ref({
-  label: '',
-  color: '#34d186',
-  icon: 'Tag'
-})
+// labelForm removed - LabelModal handles defaults internally
 
 // Computed for inbox counts using counts endpoint data
 const getCategoryCount = (categoryId: number) => {
@@ -327,9 +352,9 @@ const getCategoryUnreadCount = computed(() => {
   }
 })
 
-const getLabelCount = (labelId: number) => {
-  if (!countsData.value?.labels) return 0
-  const label = countsData.value.labels.find((lbl: any) => lbl.id === labelId)
+const getLabelCount = (labelId: string | number | undefined) => {
+  if (!countsData.value?.labels || !labelId) return 0
+  const label = countsData.value.labels.find((lbl: any) => lbl.id == labelId)
   return label?.total || 0
 }
 
@@ -358,8 +383,14 @@ function selectAllView() {
   emit('selectInboxView', view)
 }
 
-function selectLabelView(label: InboxLabel) {
+function selectLabelView(label: Label) {
   const view: SelectedView = { type: 'label', id: label.id, data: label }
+  selectedView.value = view
+  emit('selectInboxView', view)
+}
+
+function selectArchiveView() {
+  const view: SelectedView = { type: 'archive' }
   selectedView.value = view
   emit('selectInboxView', view)
 }
@@ -381,37 +412,19 @@ function closeSettings() {
   showSettings.value = false
 }
 
-function closeLabelModal() {
-  showLabelModal.value = false
-  editingLabel.value = null
-  labelForm.value = {
-    label: '',
-    color: '#34d186',
-    icon: 'Tag'
-  }
-}
+// closeLabelModal and editLabel functions removed - using inline handlers
 
-function editLabel(label: InboxLabel) {
-  editingLabel.value = label
-  labelForm.value = {
-    label: label.label,
-    color: label.color,
-    icon: label.icon
-  }
-  showLabelModal.value = true
-}
-
-function confirmDeleteLabel(label: InboxLabel) {
+function confirmDeleteLabel(label: Label) {
   labelToDelete.value = label
   showDeleteConfirm.value = true
 }
 
   const getLabelDeleteDetails = computed(() => {
-    if (!labelToDelete.value) return ''
+    if (!labelToDelete.value || !labelToDelete.value.id) return ''
     let message = '';
     
     const count = getLabelCount(labelToDelete.value.id)
-    if (labelToDelete.value.id > 1) {
+    if (Number(labelToDelete.value.id) > 1) {
       return message += `${count} email-uri vor fi afectate.`;
     } else {
       return message += `${count} email va fi afectat.`;
@@ -423,16 +436,33 @@ function closeDeleteConfirm() {
   labelToDelete.value = null
 }
 
+function toggleLabelMenu(labelId: string | number | undefined) {
+  if (!labelId) return
+  // Close all other menus first
+  Object.keys(showLabelMenus.value).forEach(id => {
+    if (id !== labelId.toString()) {
+      showLabelMenus.value[id] = false
+    }
+  })
+  // Toggle current menu
+  showLabelMenus.value[labelId] = !showLabelMenus.value[labelId]
+}
+
+function closeLabelMenu(labelId: string | number | undefined) {
+  if (!labelId) return
+  showLabelMenus.value[labelId] = false
+}
+
 async function deleteLabel() {
   if (!labelToDelete.value) return
   
   // Store the label ID before clearing the reference
-  const deletedLabelId = labelToDelete.value.id
+  const deletedLabelId = labelToDelete.value.id!
   const labelName = labelToDelete.value.label
   
   try {
     await axios.delete(`/api/inbox/labels/${deletedLabelId}`)
-    await fetchInboxLabels()
+    await fetchLabels()
     await fetchEmailCounts()
     
     // If the deleted label was currently selected, switch to All view
@@ -449,25 +479,7 @@ async function deleteLabel() {
   }
 }
 
-async function saveLabel() {
-  try {
-    const url = editingLabel.value 
-      ? `/api/inbox/labels/${editingLabel.value.id}` 
-      : '/api/inbox/labels'
-    
-    const method = editingLabel.value ? 'patch' : 'post'
-    const action = editingLabel.value ? 'editată' : 'creată'
-    
-    await axios[method](`http://localhost:4099${url}`, labelForm.value)
-    
-    await fetchInboxLabels()
-    toastStore.success(`Eticheta "${labelForm.value.label}" a fost ${action} cu succes!`)
-    closeLabelModal()
-  } catch (error) {
-    console.error('Error saving label:', error)
-    toastStore.error(`Eroare la ${editingLabel.value ? 'editarea' : 'crearea'} etichetei`)
-  }
-}
+// saveLabel function moved to labelService - LabelModal handles save internally
 
 async function fetchInboxCategories() {
   try {
@@ -485,7 +497,7 @@ async function fetchInboxCategories() {
   }
 }
 
-async function fetchInboxLabels() {
+async function fetchLabels() {
   try {
     const response = await axios.get('/api/inbox/labels')
     inboxLabels.value = response.data.data
@@ -502,10 +514,12 @@ async function fetchEmailCounts() {
     const response = await axios.get('/api/inbox/counts')
     countsData.value = response.data.data
     deletedEmailsCount.value = countsData.value.trash || 0
+    archivedEmailsCount.value = countsData.value.archive || 0
   } catch (error) {
     console.error('Error fetching email counts:', error)
     countsData.value = null
     deletedEmailsCount.value = 0
+    archivedEmailsCount.value = 0
   }
 }
 
@@ -546,21 +560,32 @@ defineExpose({
   updateViewCounts
 })
 
+// Watch for email store updates to refresh labels
+watch(() => emailStore.updateTrigger, () => {
+  fetchLabels();
+  fetchEmailCounts();
+})
+
 onMounted(async () => {
   // Load inbox data
   await Promise.all([
     fetchInboxCategories(),
-    fetchInboxLabels(),
+    fetchLabels(),
     fetchEmailCounts()
   ])
   
   // Legacy message store functionality removed
   
-  // Close user menu when clicking outside
+  // Close menus when clicking outside
   document.addEventListener('click', (e) => {
     const target = e.target as HTMLElement
     if (!target?.closest('.user-menu')) {
       showUserMenu.value = false
+    }
+    if (!target?.closest('.label-menu-dropdown')) {
+      Object.keys(showLabelMenus.value).forEach(id => {
+        showLabelMenus.value[id] = false
+      })
     }
   })
 })

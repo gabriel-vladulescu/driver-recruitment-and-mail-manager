@@ -409,14 +409,9 @@
   width: 16px;
   height: 16px;
   flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
-.label-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
 
 .count-badge {
   background: #e9ecef;
@@ -471,75 +466,12 @@
 }
 
 /* Modal styles */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 12px;
-  width: 90%;
+/* Label forms use standard modal structure with custom content */
+.modal-container.label-form {
   max-width: 500px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
 }
 
-.modal-header {
-  padding: 1.5rem;
-  border-bottom: 1px solid #e0e0e0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1a1a1a;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 6px;
-  transition: background-color 0.2s;
-}
-
-.close-btn:hover {
-  background: #f8f9fa;
-}
-
-.close-icon {
-  width: 20px;
-  height: 20px;
-  color: #666;
-}
-
-.modal-body {
-  padding: 1.5rem;
-}
-
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 600;
-  color: #1a1a1a;
-}
+/* Form group styles moved to modal.css - using unified form system */
 
 .form-input,
 .form-select,
@@ -586,40 +518,7 @@
   justify-content: flex-end;
 }
 
-.btn-cancel,
-.btn-save {
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-cancel {
-  background: #f8f9fa;
-  border: 1px solid #e0e0e0;
-  color: #666;
-}
-
-.btn-cancel:hover {
-  background: #e9ecef;
-}
-
-.btn-save {
-  background: #34d186;
-  border: 1px solid #34d186;
-  color: white;
-}
-
-.btn-save:hover:not(:disabled) {
-  background: #28a745;
-  border-color: #28a745;
-}
-
-.btn-save:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* Button styles are defined in modal.css - imported globally */
 
 @media (max-width: 768px) {
   .sidebar {
@@ -643,10 +542,6 @@
     height: auto;
   }
   
-  .modal-content {
-    width: 95%;
-    margin: 1rem;
-  }
   
   .color-picker {
     flex-direction: column;
@@ -658,10 +553,47 @@
   }
 }
 /* Trash section styles */
-.trash-section {
+.archive-section {
   margin-top: auto;
+  padding-top: 1rem;
+}
+
+.trash-section {
   border-top: 1px solid #e0e0e0;
   padding-top: 1rem;
+}
+
+.archive-header {
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin: 0 0.5rem;
+  transition: all 0.2s;
+}
+
+.archive-header:hover {
+  background: #e9ecef;
+  color: #34d186;
+}
+
+.archive-header.active {
+  background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+  color: white;
+  font-weight: 600;
+}
+
+.archive-header.active .archive-badge {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.archive-badge {
+  background: #e9ecef;
+  color: #666;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 10px;
+  min-width: 20px;
+  text-align: center;
 }
 
 .trash-header {
@@ -710,17 +642,23 @@
 .label-actions {
   margin-left: auto;
   display: flex;
-  gap: 0.25rem;
   opacity: 0;
   transition: opacity 0.2s;
+  align-items: center;
 }
 
 .label-item:hover .label-actions {
   opacity: 1;
 }
 
-.label-action-btn {
-  padding: 0.25rem;
+.label-menu-dropdown {
+  position: relative;
+}
+
+.label-menu-btn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
   border: none;
   border-radius: 4px;
   background: transparent;
@@ -729,22 +667,73 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
+  color: #666;
 }
 
-.edit-btn:hover {
-  background: rgba(52, 209, 134, 0.1);
-  color: #34d186;
+.label-menu-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #333;
 }
 
-.delete-btn:hover {
-  background: rgba(220, 53, 69, 0.1);
-  color: #dc3545;
+.label-menu-btn.active {
+  color: white;
 }
 
-.action-icon {
+.label-menu-btn.active:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.menu-icon {
   width: 14px;
   height: 14px;
 }
+
+.label-dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 120px;
+  z-index: 1000;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.dropdown-item {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #374151;
+  transition: background-color 0.2s;
+  text-align: left;
+}
+
+.dropdown-item:hover {
+  background: #f3f4f6;
+}
+
+.dropdown-item.delete-item:hover {
+  background: #fef2f2;
+  color: #dc3545;
+}
+
+.dropdown-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Action icon styles moved to modal.css - using action-icon action-icon-sm classes */
 
 /* Delete Confirmation Modal */
 .delete-overlay {
@@ -816,21 +805,7 @@
   justify-content: flex-end;
 }
 
-.btn-cancel {
-  padding: 0.5rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  background: white;
-  color: #6b7280;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-cancel:hover {
-  border-color: #9ca3af;
-  background: #f9fafb;
-}
+/* Second btn-cancel duplicate removed - using modal.css styles */
 
 .btn-delete {
   display: flex;

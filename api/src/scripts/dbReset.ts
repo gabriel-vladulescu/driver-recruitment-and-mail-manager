@@ -31,8 +31,8 @@ async function resetDatabase() {
     });
     
     await InboxType.bulkCreate([
-      { name: 'Inbox Intern', type: 'INTERNAL_INBOX' },
-      { name: 'Formulare Externe', type: 'EXTERNAL_FORMS' }
+      { name: 'Intern', type: 'INTERNAL_INBOX' },
+      { name: 'Extern', type: 'EXTERNAL_FORMS' }
     ]);
     
     await InboxCategory.bulkCreate([

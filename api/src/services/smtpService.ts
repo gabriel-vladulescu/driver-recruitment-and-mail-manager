@@ -12,7 +12,7 @@ interface EmailConfig {
   };
 }
 
-class EmailService {
+class SmtpService {
   private smtpTransporter: nodemailer.Transporter;
 
   constructor() {
@@ -35,11 +35,10 @@ class EmailService {
     to: string;
     subject: string;
     content: string;
-    signature?: string;
-    replyTo?: string;
+    inReplyTo?: string;
   }): Promise<void> {
     try {
-      const { to, subject, content, signature = '', replyTo } = options;
+      const { to, subject, content, inReplyTo } = options;
       
       // Convert HTML content to plain text for the text version
       const textContent = this.stripHtml(content);
@@ -49,10 +48,10 @@ class EmailService {
           <div style="line-height: 1.6; margin-bottom: 30px;">
             ${content}
           </div>
-          ${signature ? `
+          ${true ? `
             <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px;">
               <div style="white-space: pre-wrap; color: #666; font-size: 14px;">
-                ${signature.replace(/\n/g, '<br>')}
+                Signature: <strong>Bloom Driver Support</strong><br>
               </div>
             </div>
           ` : ''}
@@ -63,13 +62,14 @@ class EmailService {
         </div>
       `;
 
+      const signature = '<h2>Bloom Driver Support</h2>'; // Example signature, can be dynamic
+
       const mailOptions = {
         from: `"Bloom Driver Support" <${process.env.SMTP_USER}>`,
         to: to,
         subject: subject,
         html: htmlContent,
         text: textContent + (signature ? '\n\n' + signature : ''),
-        ...(replyTo && { inReplyTo: replyTo }),
       };
 
       const result = await this.smtpTransporter.sendMail(mailOptions);
@@ -81,15 +81,14 @@ class EmailService {
     }
   }
 
-  async testConnection(): Promise<{ smtp: boolean }> {
-    const results = { smtp: false };
+  async testConnection(): Promise<{ success: boolean }> {
+    const results = { success: false };
 
     try {
       await this.smtpTransporter.verify();
-      results.smtp = true;
-      console.log('SMTP connection successful');
+      results.success = true;
     } catch (error) {
-      console.error('SMTP connection failed:', error);
+      results.success = false;
     }
 
     return results;
@@ -100,4 +99,4 @@ class EmailService {
   }
 }
 
-export default new EmailService();
+export default new SmtpService();
