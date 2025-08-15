@@ -34,7 +34,11 @@ pids
 
 # IDE and editor files
 .vscode/
+**/.vscode/
 .idea/
+**/.idea/
+.claude/
+**/.claude/
 *.swp
 *.swo
 *~
