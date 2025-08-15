@@ -36,7 +36,6 @@
     <div class="messages-container">
       <!-- Direct Categories -->
       <div v-for="category in inboxCategories" :key="category.id" class="messages-section">
-        <!-- Debug: {{ category.name }} -->
         <div 
           class="category-item" 
           :class="{ 'active': selectedView.type === 'category' && selectedView.id === category.id }"
@@ -240,7 +239,6 @@ import {
   Trash2,
   Tag,
   Plus,
-  X,
   Edit,
   Trash,
   Star,

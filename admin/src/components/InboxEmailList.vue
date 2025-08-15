@@ -348,7 +348,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { emailService, labelService } from '@/api'
+import { emailService } from '@/api'
 import { useEmailStore } from '@/stores/emailStore'
 import '@/assets/modal.css'
 import '@/assets/inbox-email-list.css'
@@ -364,7 +364,7 @@ import { serverService } from '@/api/serverService'
 // Props
 interface Props {
   view: {
-    type: 'category' | 'label' | 'all' | 'trash'
+    type: 'category' | 'label' | 'all' | 'trash' | 'archive'
     id?: string | number
     data?: any
   }

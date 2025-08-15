@@ -2,7 +2,6 @@
   <div class="dashboard">
     <AppSidebar 
       ref="sidebarRef"
-      @select-message="handleSelectMessage" 
       @select-inbox-view="handleInboxViewChange" 
     />
   
@@ -57,8 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed, ref, watch } from 'vue'
-import { useMessagesStore } from '@/stores/messages'
+import { onMounted, ref } from 'vue'
 import { useEmailStore } from '@/stores/emailStore'
 import { MessageCircle } from 'lucide-vue-next'
 import AppSidebar from '@/components/AppSidebar.vue'
@@ -68,12 +66,11 @@ import '@/assets/dashboard.css'
 
 // Types from AppSidebar
 interface SelectedView {
-  type: 'category' | 'label' | 'all' | 'trash'
+  type: 'category' | 'label' | 'all' | 'trash' | 'archive'
   id?: string | number
   data?: any
 }
 
-const messagesStore = useMessagesStore()
 const emailStore = useEmailStore()
 
 // State
@@ -90,20 +87,11 @@ const fetchProgress = ref({
   percentage: 0
 })
 
-const selectedMessage = computed(() => messagesStore.selectedMessage)
-const selectedSentMessage = computed(() => messagesStore.selectedSentMessage)
 
 onMounted(() => {
 
 })
 
-function handleSelectMessage(messageId: string) {
-  const message = messagesStore.messages.find(m => m.id === messageId)
-  if (message) {
-    selectedInboxView.value = null
-    selectedInboxEmail.value = null
-  }
-}
 
 function handleInboxViewChange(view: SelectedView) {
   selectedInboxView.value = view
