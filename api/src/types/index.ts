@@ -1,8 +1,15 @@
-export interface ApiResponse<T = any> {
-  success: boolean;
+export interface ServerResponse {
+  status: ResponseStatus;
   message?: string;
-  data?: T;
+  data?: object;
 }
+
+type ValidationErrorItem = { message: string };
+export type PossibleError =
+  | Error
+  | string
+  | { message?: string }
+  | { errors?: ValidationErrorItem[] };
 
 export interface PaginationQuery {
   page?: string | number;
@@ -62,4 +69,14 @@ export interface LabelData {
 export interface UpdateEmailData {
   is_read?: boolean;
   inbox_label_id?: string | null;
+}
+
+export enum ResponseStatus {
+  Info = 3,
+  Warning = 2,
+  Success = 1,
+  Error = 0,
+  NotFound = -1,
+  Unauthorized = -2,
+  Forbidden = -3,
 }

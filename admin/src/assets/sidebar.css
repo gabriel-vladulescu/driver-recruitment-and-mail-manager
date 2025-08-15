@@ -19,31 +19,31 @@
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
 }
 
-.logo {
+.sidebar-logo {
   display: flex;
   align-items: center;
   gap: 0.75rem;
 }
 
-.logo-icon {
+.sidebar-logo-icon {
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, #34d186 0%, #28a745 100%);
+  background: linear-gradient(135deg, #a3a2a2 0%, #1a1a1a 100%);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.logo-icon .icon {
+.sidebar-logo-icon .icon {
   width: 20px;
   height: 20px;
   color: white;
 }
 
-.logo-text h2 {
+.sidebar-logo-text h3 {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1rem;
   font-weight: 700;
   color: #1a1a1a;
 }
@@ -452,6 +452,7 @@
 .plus-icon {
   width: 12px;
   height: 12px;
+  stroke-width: 4px;
   color: white;
 }
 
@@ -553,47 +554,9 @@
   }
 }
 /* Trash section styles */
-.archive-section {
-  margin-top: auto;
-  padding-top: 1rem;
-}
-
 .trash-section {
   border-top: 1px solid #e0e0e0;
   padding-top: 1rem;
-}
-
-.archive-header {
-  background: #f8f9fa;
-  border-radius: 8px;
-  margin: 0 0.5rem;
-  transition: all 0.2s;
-}
-
-.archive-header:hover {
-  background: #e9ecef;
-  color: #34d186;
-}
-
-.archive-header.active {
-  background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-  color: white;
-  font-weight: 600;
-}
-
-.archive-header.active .archive-badge {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.archive-badge {
-  background: #e9ecef;
-  color: #666;
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 0.25rem 0.5rem;
-  border-radius: 10px;
-  min-width: 20px;
-  text-align: center;
 }
 
 .trash-header {

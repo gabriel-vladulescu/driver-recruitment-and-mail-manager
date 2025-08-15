@@ -4,7 +4,7 @@ import { StatusTypes } from "@/types/api";
 import axios from "axios";
 
 interface ConnectionTestResult {
-    success: boolean;
+    status: number;
     message: string;
     details?: any;
     emailCount?: number;
@@ -27,21 +27,21 @@ export const serverService = {
                 const emailCount = emailCountMatch ? parseInt(emailCountMatch[1]) : 0;
 
                 return {
-                    success: true,
+                    status: StatusTypes.Success,
                     message: 'Conexiune IMAP reușită',
                     details: response.data.data,
                     emailCount
                 };
             } else {
                 return {
-                    success: false,
+                    status: StatusTypes.Error,
                     message: response.data.message || 'Eroare la testarea conexiunii IMAP'
                 };
             }
         } catch (error: any) {
             console.error('Test IMAP connection error:', error);
             return {
-                success: false,
+                status: StatusTypes.Error,
                 message: error.response?.data?.message || error.message || 'Eroare la testarea conexiunii IMAP'
             };
         }
@@ -53,20 +53,20 @@ export const serverService = {
 
             if (response.data.status === StatusTypes.Success) {
                 return {
-                    success: true,
+                    status: StatusTypes.Success,
                     message: 'Conexiune SMTP reușită',
                     details: response.data.data
                 };
             } else {
                 return {
-                    success: false,
+                    status: StatusTypes.Error,
                     message: response.data.message || 'Eroare la testarea conexiunii SMTP'
                 };
             }
         } catch (error: any) {
             console.error('Test SMTP connection error:', error);
             return {
-                success: false,
+                status: StatusTypes.Error,
                 message: error.response?.data?.message || error.message || 'Eroare la testarea conexiunii SMTP'
             };
         }
@@ -80,11 +80,11 @@ export const serverService = {
 
         return {
             imap: imapResult.status === 'fulfilled' ? imapResult.value : {
-                success: false,
+                status: StatusTypes.Error,
                 message: 'Eroare la testarea conexiunii IMAP'
             },
             smtp: smtpResult.status === 'fulfilled' ? smtpResult.value : {
-                success: false,
+                status: StatusTypes.Error,
                 message: 'Eroare la testarea conexiunii SMTP'
             }
         };

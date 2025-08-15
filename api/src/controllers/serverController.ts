@@ -1,93 +1,60 @@
 import { Request, Response } from "express";
 import { InboxCategory, InboxEmail, InboxType } from "../models";
-import { ResponseStatus } from "../config/constants";
+import { ResponseStatus } from "../types";
+import { ApiResponse } from "../utils/common";
 import ImapService from "../services/imapService";
 import smtpService from "../services/smtpService";
 
-export const testImapConnection = async (req: Request, res: Response) => {
+export const testImapConnection = async (req: Request, res: Response): Promise<Response> => {
     try {
         const imapService = new ImapService();
         const result = await imapService.testConnection();
 
         if (result.success) {
-            return res.json({
-                status: ResponseStatus.Success,
-                message: 'Conexiunea IMAP a fost testată cu succes. Au fost gasite ' + result.count + ' email-uri.',
-            });
+            return ApiResponse(res, ResponseStatus.Success, `Conexiunea IMAP a fost testată cu succes. Au fost gasite ${result.count} email-uri.`);
         }
 
-        return res.json({
-            status: ResponseStatus.Error,
-            message: 'Eroare la testarea conexiunii IMAP',
-        });
+        return ApiResponse(res, ResponseStatus.Error, 'Eroare la testarea conexiunii IMAP');
     } catch (error) {
-        res.status(500).json({
-            status: ResponseStatus.Error,
-            message: "Eroare la testarea conexiunii IMAP",
-            error
-        });
+        return ApiResponse(res, ResponseStatus.Error, error, 'Eroare la testarea conexiunii IMAP', 500);
     }
 };
 
-export const testSmtpConnection = async (req: Request, res: Response) => {
+export const testSmtpConnection = async (req: Request, res: Response): Promise<Response> => {
     try {
         const result = await smtpService.testConnection();
 
         if (result.success) {
-            return res.json({
-                status: ResponseStatus.Success,
-                message: 'Conexiunea SMTP a fost testată cu succes',
-            });
+            return ApiResponse(res, ResponseStatus.Success, 'Conexiunea SMTP a fost testată cu succes');
         }
 
-        return res.json({
-            status: ResponseStatus.Error,
-            message: 'Eroare la testarea conexiunii SMTP',
-        });
-    } catch (error: any) {
-        res.status(500).json({
-            status: ResponseStatus.Error,
-            message: 'Eroare la testarea conexiunii SMTP',
-            error
-        });
+        return ApiResponse(res, ResponseStatus.Error, 'Eroare la testarea conexiunii SMTP');
+    } catch (error) {
+        return ApiResponse(res, ResponseStatus.Error, error, 'Eroare la testarea conexiunii SMTP', 500);
     }
 }
 
-export const getInternalInboxEmails = async (req: Request, res: Response) => {
+export const getInternalInboxEmails = async (_req: Request, res: Response): Promise<Response> => {
     try {
         const imapService = new ImapService();
         const result = await imapService.fetchAllEmails();
 
         if (result.success) {
-            return res.json({
-                status: ResponseStatus.Success,
-                message: 'Email-urile au fost preluate cu succes de pe server',
-                result
-            });
+            return ApiResponse(res, ResponseStatus.Success, result, 'Email-urile au fost preluate cu succes de pe server');
         }
 
-        return res.json({
-            status: ResponseStatus.Error,
-            message: 'Eroare la preluarea email-urilor de pe server',
-        });
+        return ApiResponse(res, ResponseStatus.Error, 'Eroare la preluarea email-urilor de pe server');
     } catch (error) {
-        res.status(500).json({
-            status: ResponseStatus.Error,
-            message: "Eroare la preluarea email-urilor de pe server",
-            error
-        });
+        return ApiResponse(res, ResponseStatus.Error, error, 'Eroare la preluarea email-urilor de pe server', 500);
     }
 };
 
-export const replyToEmail = async (req: Request, res: Response) => {
+export const replyToEmail = async (req: Request, res: Response): Promise<Response> => {
     try {
         const { to, subject, content, inReplyTo } = req.body;
 
         if (!to || !subject || !content) {
-            return res.status(400).json({
-                success: false,
-                message: 'Câmpurile to, subject și content sunt obligatorii'
-            });
+            return ApiResponse(res, ResponseStatus.Error, 'Câmpurile to, subject și content sunt obligatorii');
         }
 
         // Send email
@@ -105,7 +72,7 @@ export const replyToEmail = async (req: Request, res: Response) => {
         ]);
 
         if (!sentCategory || !internalType) {
-            throw new Error('Required category or type not found');
+            return ApiResponse(res, ResponseStatus.Error, 'Categorie sau tip intern necesar nu a fost găsit');
         }
 
         // Get original email to extract the sender's name for email_to_name
@@ -136,18 +103,13 @@ export const replyToEmail = async (req: Request, res: Response) => {
             }
         });
 
-        res.json({
-            success: true,
-            message: 'Email trimis cu succes',
-            data: {
-                emailId: sentReply.id
-            }
-        });
-    } catch (error: any) {
-        console.error('Error sending reply:', error);
-        res.status(500).json({
-            success: false,
-            message: error.message || 'Eroare la trimiterea email-ului'
-        });
+        return ApiResponse(res, ResponseStatus.Success, 
+            {
+            emailId: sentReply.id
+            },
+            'Email trimis cu succes'
+        );
+    } catch (error) {
+        return ApiResponse(res, ResponseStatus.Error, error, 'Eroare la trimiterea email-ului', 500);
     }
 }

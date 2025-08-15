@@ -100,6 +100,7 @@ import {
   Check,
   Wifi
 } from 'lucide-vue-next'
+import { StatusTypes } from '@/types/api'
 
 defineProps<{
   isVisible: boolean
@@ -152,11 +153,11 @@ const getConnectionStatusText = (type: 'imap' | 'smtp') => {
 const checkConnectionStatus = async () => {
   try {
     const results = await serverService.testAllConnections()
-    connectionStatus.value.imap = results.imap.success ? 'connected' : 'error'
-    connectionStatus.value.smtp = results.smtp.success ? 'connected' : 'error'
+    connectionStatus.value.imap = results.imap.status === StatusTypes.Success ? 'connected' : 'error'
+    connectionStatus.value.smtp = results.smtp.status === StatusTypes.Success ? 'connected' : 'error'
     
     // Store email count for IMAP if available
-    if (results.imap.success && results.imap.emailCount !== undefined) {
+    if (results.imap.status === StatusTypes.Success && results.imap.emailCount !== undefined) {
       emailCounts.value.imap = results.imap.emailCount
     }
   } catch (error) {
@@ -173,7 +174,3 @@ onMounted(() => {
   checkConnectionStatus()
 })
 </script>
-
-<style scoped>
-/* Settings-specific styles that aren't in the shared modal.css */
-</style>

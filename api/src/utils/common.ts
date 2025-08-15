@@ -1,76 +1,139 @@
 import { Response } from 'express';
-import { ApiResponse } from '../types';
+import { ServerResponse, PossibleError, ResponseStatus } from '../types';
 
 /**
- * Send a standardized error response
+ * Extract meaningful message from any error type
  */
-export const sendErrorResponse = (
-  res: Response, 
-  statusCode: number, 
-  message: string, 
-  error?: any
-): void => {
-  if (error && process.env.NODE_ENV !== 'production') {
-    console.error(`Error [${statusCode}]:`, error);
+const extractErrorMessage = (error: PossibleError, fallback: string): string => {
+  if (!error) return fallback;
+
+  // Handle Error objects
+  if (error instanceof Error) {
+    return error.message;
   }
-  
-  res.status(statusCode).json({
-    success: false,
-    message
-  } as ApiResponse);
+
+  // Handle string errors
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  // Handle Sequelize validation errors
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'errors' in error &&
+    Array.isArray(error.errors)
+  ) {
+    return error.errors.map(e => e.message).join(', ');
+  }
+
+  // Handle objects with message property
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof error.message === 'string'
+  ) {
+    return error.message;
+  }
+
+  return fallback;
 };
 
 /**
- * Send a standardized success response
+ * Log error with context for debugging
  */
-export const sendSuccessResponse = <T>(
-  res: Response, 
-  data?: T, 
-  message?: string, 
-  statusCode: number = 200
-): void => {
-  res.status(statusCode).json({
-    success: true,
-    message,
-    data
-  } as ApiResponse<T>);
+const logError = (status: ResponseStatus, message: string, error?: any, context?: string): void => {
+  if (process.env.NODE_ENV !== 'production' && [ResponseStatus.Error, ResponseStatus.NotFound, ResponseStatus.Unauthorized, ResponseStatus.Forbidden].includes(status)) {
+    const logContext = context ? `[${context}] ` : '';
+    console.error(`${logContext}${ResponseStatus[status]} (${status}): ${message}`);
+
+    if (error) {
+      if (error instanceof Error) {
+        console.error('Stack:', error.stack);
+      } else {
+        console.error('Error details:', error);
+      }
+    }
+  }
 };
 
 /**
- * Validate entity existence and return 404 if not found
+ * Get HTTP status code from ResponseStatus
  */
-export const validateEntityExists = (
-  entity: any, 
-  res: Response, 
-  entityName: string = 'Înregistrarea'
-): boolean => {
-  if (!entity) {
-    sendErrorResponse(res, 404, `${entityName} nu a fost găsită`);
-    return false;
+const getHttpStatusFromResponseStatus = (status: ResponseStatus): number => {
+  switch (status) {
+    case ResponseStatus.Success:
+    case ResponseStatus.Warning:
+    case ResponseStatus.Info:
+      return 200;
+    case ResponseStatus.Error:
+      return 400;
+    case ResponseStatus.NotFound:
+      return 404;
+    case ResponseStatus.Unauthorized:
+      return 401;
+    case ResponseStatus.Forbidden:
+      return 403;
+    default:
+      return 500;
   }
-  return true;
 };
 
 /**
- * Validate required fields in request body
+ * Unified API Response function that handles everything based on ResponseStatus
  */
-export const validateRequiredFields = (
-  data: any, 
-  requiredFields: string[], 
-  res: Response
-): boolean => {
-  const missingFields = requiredFields.filter(field => !data[field]);
-  
-  if (missingFields.length > 0) {
-    sendErrorResponse(
-      res, 
-      400, 
-      `Câmpurile următoare sunt obligatorii: ${missingFields.join(', ')}`
-    );
-    return false;
+export const ApiResponse = (
+  res: Response,
+  status: ResponseStatus,
+  dataOrMessageOrError?: any,
+  message: string = '',
+  httpStatusCode?: number
+): Response => {
+  let finalMessage: string = '';
+  let stackTrace: any;
+  let data: object | undefined = undefined;
+
+  if (dataOrMessageOrError instanceof Error) {
+    stackTrace = dataOrMessageOrError;
+    finalMessage = typeof message === 'string' && message.length > 0
+      ? message
+      : extractErrorMessage(stackTrace, 'An error occurred');
+  } else if (typeof dataOrMessageOrError === 'string') {
+    finalMessage = dataOrMessageOrError;
+  } else {
+    data = dataOrMessageOrError;
+    if (typeof message === 'string' && message.length > 0) {
+      finalMessage = message;
+    }
   }
-  
-  return true;
+
+  /**
+   * Decision logic for final message
+   */
+  // Determine HTTP status code
+  const httpStatus = httpStatusCode || getHttpStatusFromResponseStatus(status);
+
+  // Log if it's an error
+  if (stackTrace || [ResponseStatus.Error,
+  ResponseStatus.NotFound,
+  ResponseStatus.Unauthorized,
+  ResponseStatus.Forbidden].includes(status)) {
+    logError(status, finalMessage, stackTrace, ResponseStatus[status]);
+  }
+
+  // Build response
+  const response: ServerResponse = { status };
+
+  if (finalMessage.length > 0) {
+    response.message = finalMessage;
+  }
+
+  if (data !== undefined) {
+    response.data = data;
+  }
+
+  return res.status(httpStatus).json(response);
 };
 
 /**
@@ -87,7 +150,7 @@ export const parsePaginationParams = (page?: string | number, limit?: string | n
   const parsedPage = Math.max(1, parseInt(page?.toString() || '1'));
   const parsedLimit = Math.min(100, Math.max(1, parseInt(limit?.toString() || '20'))); // Max 100 items per page
   const offset = (parsedPage - 1) * parsedLimit;
-  
+
   return { page: parsedPage, limit: parsedLimit, offset };
 };
 
@@ -95,8 +158,8 @@ export const parsePaginationParams = (page?: string | number, limit?: string | n
  * Calculate pagination metadata
  */
 export const calculatePaginationMeta = (
-  total: number, 
-  page: number, 
+  total: number,
+  page: number,
   limit: number,
   unread?: number
 ) => {
@@ -106,10 +169,10 @@ export const calculatePaginationMeta = (
     limit,
     totalPages: Math.ceil(total / limit)
   };
-  
+
   if (unread !== undefined) {
     meta.unread = unread;
   }
-  
+
   return meta;
 };

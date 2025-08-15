@@ -58,6 +58,7 @@ import { ref } from 'vue'
 import { Wifi, Loader, Check, X, Mail } from 'lucide-vue-next'
 import { serverService } from '@/api/serverService'
 import '@/assets/email-test.css'
+import { StatusTypes } from '@/types/api'
 
 const testing = ref({
   imap: false,
@@ -82,7 +83,10 @@ async function testConnectionImap() {
   
   try {
     const result = await serverService.testConnectionImap()
-    testResults.value.imap = result
+    testResults.value.imap = {
+      ...result,
+      success: result.status === StatusTypes.Success
+    }
   } catch (err: any) {
     error.value = err.message
     testResults.value.imap = {
@@ -101,7 +105,10 @@ async function testConnectionSmtp() {
   
   try {
     const result = await serverService.testConnectionSmtp()
-    testResults.value.smtp = result
+    testResults.value.smtp = {
+      ...result,
+      success: result.status === StatusTypes.Success
+    }
   } catch (err: any) {
     error.value = err.message
     testResults.value.smtp = {
@@ -121,8 +128,14 @@ async function testAllConnections() {
   
   try {
     const results = await serverService.testAllConnections()
-    testResults.value.imap = results.imap
-    testResults.value.smtp = results.smtp
+    testResults.value.imap = {
+      ...results.imap,
+      success: results.imap.status === StatusTypes.Success
+    }
+    testResults.value.smtp = {
+      ...results.smtp,
+      success: results.smtp.status === StatusTypes.Success
+    }
   } catch (err: any) {
     error.value = err.message
   } finally {

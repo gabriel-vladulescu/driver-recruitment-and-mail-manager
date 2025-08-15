@@ -2,12 +2,13 @@
   <div class="sidebar">
     <!-- Header -->
     <div class="sidebar-header">
-      <div class="logo">
-        <div class="logo-icon">
-          <Shield class="icon" />
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-icon">
+          <Mail class="icon" />
         </div>
-        <div class="logo-text">
-          <h2>Bloom Admin</h2>
+        <div class="sidebar-logo-text">
+          <h3>Avanty Mail</h3>
+          <h5>Mail and Forms Management</h5>
         </div>
       </div>
       <div class="user-menu">
@@ -87,9 +88,9 @@
       <!-- Labels Section -->
       <div class="messages-section">
         <div class="section-header" @click="toggleSection('labels')">
-          <div class="section-title">
-            <Tag class="section-icon" />
-            Etichete
+          <div class="category-info">
+            <Tag class="category-icon" />
+            <span class="category-title">Etichete</span>
             <button @click.stop="showLabelModal = true; editingLabel = null;" class="add-label-btn">
               <Plus class="plus-icon" />
             </button>
@@ -157,34 +158,47 @@
       </div>
 
       <!-- Archive Section -->
-      <div class="messages-section archive-section">
+      <div class="messages-section">
         <div 
-          class="section-header archive-header" 
-          @click="selectArchiveView()"
+          class="category-item" 
           :class="{ 'active': selectedView.type === 'archive' }"
+          @click="selectArchiveView()"
         >
-          <div class="section-title">
-            <Archive class="section-icon archive-icon" />
-            <span>Arhivă</span>
-            <span v-if="archivedEmailsCount > 0" class="archive-badge">{{ archivedEmailsCount }}</span>
+          <div class="category-content-main">
+            <div class="category-info">
+              <Archive class="category-icon" />
+              <span class="category-title">Arhivă</span>
+            </div>
+            <div class="category-badges">
+              <span v-if="archivedEmailsCount > 0" class="count-badge">
+                {{ archivedEmailsCount }}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Trash Section -->
-      <div class="messages-section trash-section">
+      <div class="messages-section">
         <div 
-          class="section-header trash-header" 
-          @click="selectTrashView()"
+          class="category-item" 
           :class="{ 'active': selectedView.type === 'trash' }"
+          @click="selectTrashView()"
         >
-          <div class="section-title">
-            <Trash2 class="section-icon trash-icon" />
-            <span>Coș de gunoi</span>
-            <span v-if="deletedEmailsCount > 0" class="trash-badge">{{ deletedEmailsCount }}</span>
+          <div class="category-content-main">
+            <div class="category-info">
+              <Trash2 class="category-icon" />
+              <span class="category-title">Coș de gunoi</span>
+            </div>
+            <div class="category-badges">
+              <span v-if="deletedEmailsCount > 0" class="count-badge">
+                {{ deletedEmailsCount }}
+              </span>
+            </div>
           </div>
         </div>
       </div>
+
     </div>
 
     <!-- Label Management Modal -->
@@ -256,7 +270,8 @@ import {
   File,
   Folder,
   Bell,
-  MoreVertical
+  MoreVertical,
+  Mailbox
 } from 'lucide-vue-next'
 import SettingsModal from './modals/SettingsModal.vue'
 import ConfirmDialog from './modals/ConfirmDialog.vue'

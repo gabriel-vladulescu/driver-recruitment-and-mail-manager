@@ -56,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useEmailStore } from '@/stores/emailStore'
 import { MessageCircle } from 'lucide-vue-next'
 import AppSidebar from '@/components/AppSidebar.vue'

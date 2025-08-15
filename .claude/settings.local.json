@@ -30,6 +30,7 @@
       "Bash(tasklist:*)",
       "Bash(ping:*)"
     ],
-    "deny": []
+    "deny": [],
+    "defaultMode": "acceptEdits"
   }
 }

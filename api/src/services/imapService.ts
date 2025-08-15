@@ -280,7 +280,6 @@ class ImapService {
 
       let emailsProcessed = 0;
       let emailsSkipped = 0;
-      const totalEmails = box.messages.total;
 
       // Fetch emails (start from most recent, limit to last 50 to avoid overload)
       const searchCriteria = ['ALL'];
