@@ -52,75 +52,71 @@
                 <!-- Trash-specific actions -->
                 <button 
                   @click="emailService.restoreFromTrash(email.id)" 
-                  class="action-btn restore-btn"
+                  class="toolbar-btn"
                   title="Restaurează email-ul"
                 >
-                  <RotateCcw class="action-icon" />
-                  Restaurează
+                  <RotateCcw class="toolbar-icon" />
                 </button>
                 
                 <button 
                   @click="showPermanentDeleteDialog = true" 
-                  class="action-btn danger permanent-delete-btn"
+                  class="toolbar-btn danger"
                   title="Șterge definitiv"
                 >
-                  <Trash2 class="action-icon" />
-                  Șterge definitiv
+                  <Trash2 class="toolbar-icon" />
                 </button>
               </template>
               <template v-else-if="view?.type === 'archive'">
                 <!-- Archive-specific actions -->
                 <button 
                   @click="emailService.restoreFromArchive(email.id)" 
-                  class="action-btn restore-btn"
+                  class="toolbar-btn"
                   title="Restaurează din arhivă"
                 >
-                  <RotateCcw class="action-icon" />
-                  Restaurează
+                  <RotateCcw class="toolbar-icon" />
                 </button>
                 
                 <button 
                   @click="showDeleteFromArchiveDialog = true" 
-                  class="action-btn danger"
+                  class="toolbar-btn danger"
                   title="Mută în trash"
                 >
-                  <Trash2 class="action-icon" />
+                  <Trash2 class="toolbar-icon" />
                 </button>
               </template>
               <template v-else>
                 <!-- Normal email actions -->
                 <button 
                   @click="showReplyModal = true" 
-                  class="action-btn primary"
+                  class="toolbar-btn primary"
                   title="Răspunde la email"
                 >
-                  <Reply class="action-icon" />
-                  Răspunde
+                  <Reply class="toolbar-icon" />
                 </button>
                 
                 <button 
                   @click="emailService.markAsRead(email.id, !email.is_read); email.is_read = !email.is_read" 
-                  class="action-btn"
+                  class="toolbar-btn"
                   :title="email.is_read ? 'Marchează ca necitit' : 'Marchează ca citit'"
                 >
-                  <MailOpen v-if="email.is_read" class="action-icon" />
-                  <Mail v-else class="action-icon" />
+                  <MailOpen v-if="email.is_read" class="toolbar-icon" />
+                  <Mail v-else class="toolbar-icon" />
                 </button>
                 
                 <button 
                   @click="showLabelModal = true" 
-                  class="action-btn"
+                  class="toolbar-btn"
                   title="Setează etichetă"
                 >
-                  <Tag class="action-icon" />
+                  <Tag class="toolbar-icon" />
                 </button>
                 
                 <button 
                   @click="showDeleteDialog = true" 
-                  class="action-btn danger"
+                  class="toolbar-btn danger"
                   title="Șterge email"
                 >
-                  <Trash2 class="action-icon" />
+                  <Trash2 class="toolbar-icon" />
                 </button>
               </template>
             </div>
