@@ -128,7 +128,7 @@ const systemVersion = computed(() => {
 })
 
 const apiUrl = computed(() => {
-  return import.meta.env.VITE_API_BASE_URL
+  return import.meta.env.VITE_MAIL_API_BASE_URL
 })
 
 const applicationName = computed(() => {

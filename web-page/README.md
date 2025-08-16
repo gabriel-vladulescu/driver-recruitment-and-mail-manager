@@ -1,185 +1,217 @@
 # Bolt Driver Recruitment Page
 
-O aplicație Vue.js pentru recrutarea șoferilor Bolt, complet tradusă în română și cu integrare pentru server Node.js.
+## 1. About
 
-## 🚀 Caracteristici
+A Vue.js application for Bolt driver recruitment, fully translated to Romanian with Node.js server integration. The application provides a modern, responsive interface for driver applications with multi-step forms and real-time validation.
 
-- **Vue.js 3** cu Composition API și setup modular
-- **Vue Router** pentru navigare între pagini  
-- **Lucide Vue Next** pentru icoane moderne
-- **Axios** pentru trimiterea formularului către server
-- **Design responsiv** optimizat pentru toate dispozitivele
-- **Traducere completă în română**
-- **Animații CSS** pentru o experiență îmbunătățită
-- **Integrare server Node.js** pentru procesarea aplicațiilor
+## 2. Specifications
 
-## 📁 Structura Proiectului
+- **Vue.js 3** with Composition API and modular setup
+- **Vue Router** for page navigation  
+- **Lucide Vue Next** for modern icons
+- **Fetch API** for form submission to server
+- **Responsive design** optimized for all devices
+- **Complete Romanian translation**
+- **CSS animations** for enhanced user experience
+- **Docker support** for easy deployment
+- **Environment-specific configuration**
+- **Nginx** for production serving
+- **Multi-step form** with validation
+
+## 3. Project Structure
 
 ```
-bolt-driver/
+web-page/
 ├── public/
-│   ├── images/                 # Imagini și logo-uri
-│   └── index.html             # HTML principal
+│   ├── images/                 # Images and logos
+│   └── index.html             # Main HTML file
 ├── src/
-│   ├── assets/                # Resurse statice
-│   ├── components/            # Componente reutilizabile
-│   │   ├── AppHeader.vue      # Header cu navigare
-│   │   ├── AppFooter.vue      # Footer cu link-uri
-│   │   ├── HeroSection.vue    # Secțiunea hero
-│   │   ├── BenefitsSection.vue # Beneficiile șoferilor
-│   │   ├── RequirementsSection.vue # Cerințe pentru șoferi
-│   │   ├── ProcessSection.vue  # Pașii de aplicare
-│   │   └── ApplicationForm.vue # Formularul de aplicare
-│   ├── router/                # Configurare Vue Router
-│   ├── views/                 # Paginile aplicației
-│   │   ├── Home.vue          # Pagina principală
-│   │   ├── About.vue         # Despre Bolt
-│   │   └── Support.vue       # Suport pentru șoferi
-│   ├── App.vue               # Componenta principală
+│   ├── assets/                # Static resources
+│   ├── components/            # Reusable components
+│   │   ├── AppHeader.vue      # Header with navigation
+│   │   ├── AppFooter.vue      # Footer with links
+│   │   ├── HeroSection.vue    # Hero section
+│   │   ├── BenefitsSection.vue # Driver benefits
+│   │   ├── RequirementsSection.vue # Driver requirements
+│   │   ├── ProcessSection.vue  # Application steps
+│   │   └── ApplicationForm.vue # Application form
+│   ├── router/                # Vue Router configuration
+│   ├── views/                 # Application pages
+│   │   ├── Home.vue          # Main page
+│   │   ├── About.vue         # About Bolt
+│   │   └── Contact.vue       # Contact page
+│   ├── App.vue               # Main component
 │   ├── main.js               # Entry point
-│   └── style.css             # Stiluri globale și animații
-├── .env                      # Variabile de mediu
-├── server-example.js         # Server Node.js pentru formulare
-└── package.json             # Dependencies și scripts
+│   └── style.css             # Global styles and animations
+├── .env                      # Environment variables
+├── .env.example             # Environment template
+├── .env.production          # Production environment
+├── Dockerfile               # Docker build instructions
+├── docker-compose.yml       # Docker orchestration
+├── nginx.conf               # Nginx configuration
+├── vite.config.js           # Vite configuration
+└── package.json             # Dependencies and scripts
 ```
 
-## 🛠️ Instalare și Pornire
+## 4. Setup and Running
 
-### 1. Instalarea dependințelor
+### Prerequisites
+- Node.js 20+
+- npm or yarn
+- Docker (for production)
 
+### 4.1. Run in Development Mode
+
+1. **Install dependencies**
 ```bash
 npm install
 ```
 
-### 2. Configurarea variabilelor de mediu
-
-Copiază `.env.example` în `.env` și ajustează valorile:
-
+2. **Configure environment variables**
+Copy `.env.example` to `.env` and adjust values:
 ```bash
 cp .env.example .env
 ```
 
-### 3. Adăugarea imaginilor
+3. **Environment configuration (.env)**
+```env
+VITE_API_BASE_URL=http://localhost:4000
+VITE_APP_NAME=Web Page
+VITE_PHONE_NUMBER=123456789
+VITE_EMAIL=contact@example.com
+```
 
-Adaugă imaginile în folderul `public/images/`:
-- `bolt-logo.png` - Logo-ul Bolt
-- `bolt-hero.jpg` - Imagine pentru secțiunea hero
-- Vezi `public/images/placeholder-setup.md` pentru detalii
-
-### 4. Pornirea aplicației de dezvoltare
-
+4. **Start development server**
 ```bash
 npm run dev
 ```
 
-Aplicația va fi disponibilă la `http://localhost:5173`
+**Development Details:**
+- **URL**: `http://localhost:3000` (configurable via DEV_SERVER_PORT)
+- **API**: `http://localhost:4000` (from `.env`)
+- **Features**: Hot reload, source maps, dev tools
+- **Mode**: Development with fast rebuilds
 
-### 5. Pornirea serverului Node.js (opțional)
+### 4.2. Run in Production Mode
 
-Pentru a testa formularul, pornește serverul backend:
+#### Option 1: Docker (Recommended)
+
+1. **Configure production environment**
+Edit `.env.production` with your domain:
+```env
+VITE_API_BASE_URL=https://api.yourdomain.com
+VITE_APP_NAME=Web Page
+VITE_PHONE_NUMBER=123456789
+VITE_EMAIL=contact@example.com
+```
+
+2. **Build and start with Docker**
+```bash
+# Build and start
+docker-compose up --build
+
+# Background mode
+docker-compose up -d --build
+```
+
+**Production Details:**
+- **URL**: `http://localhost:8080`
+- **API**: `https://api.yourdomain.com` (from `.env.production`)
+- **Features**: Optimized build, Nginx serving, Gzip compression
+- **Mode**: Production with minified assets
+
+#### Option 2: Manual Build
 
 ```bash
-# Instalează dependințele pentru server
-npm install express cors
+# Build for production
+npm run build
 
-# Pornește serverul
-node server-example.js
+# Preview locally
+npm run preview
 ```
 
-Serverul va rula pe `http://localhost:4000`
+#### Option 3: Reverse Proxy Setup
 
-## 🎨 Personalizare
-
-### Culori
-
-Culorile principale sunt definite în CSS:
-- Verde Bolt: `#34d186`
-- Verde închis: `#28a745`
-- Gri text: `#1a1a1a`
-
-### Fonturi
-
-Utilizează Google Fonts (Inter) pentru o tipografie modernă.
-
-### Animații
-
-Animațiile sunt definite în `src/style.css`:
-- `fadeInUp` - Pentru elemente care apar
-- `slideInLeft/Right` - Pentru elemente laterale
-- `pulse` - Pentru butoane importante
-
-## 📱 API Endpoints
-
-Serverul Node.js oferă următoarele endpoint-uri:
-
-```
-GET  /api/health           # Status server
-POST /api/applications     # Trimitere aplicație
-GET  /api/applications     # Lista aplicațiilor (admin)
-GET  /api/applications/:id # Aplicație specifică
-```
-
-### Exemplu de cerere POST:
-
-```javascript
-{
-  "firstName": "Ion",
-  "lastName": "Popescu", 
-  "email": "ion.popescu@email.com",
-  "phone": "0723456789",
-  "city": "București",
-  "hasLicense": "yes",
-  "hasVehicle": "yes",
-  "message": "Mesaj opțional"
+For production with custom domain:
+```nginx
+# Nginx reverse proxy configuration
+server {
+    listen 80;
+    server_name yourdomain.com;
+    
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 }
 ```
 
-## 🔧 Scripts Disponibile
+## 5. API Endpoints
 
-- `npm run dev` - Pornește serverul de dezvoltare
-- `npm run build` - Construiește pentru producție  
-- `npm run preview` - Preview build de producție
+The Node.js server provides the following endpoints:
 
-## 🌐 Deploy
+### Base URL
+- **Development**: `http://localhost:4000`
+- **Production**: `https://api.yourdomain.com`
 
-### Vite + Netlify/Vercel
+### Available Endpoints
 
-```bash
-npm run build
-# Upload folder dist/ to your hosting provider
+```
+GET  /api/health           # Server status check
+POST /api/forms            # Submit application form
+GET  /api/applications     # List applications (admin)
+GET  /api/applications/:id # Get specific application
 ```
 
-### Docker (opțional)
+### POST /api/forms - Submit Application
 
-```dockerfile
-FROM node:16-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-RUN npm run build
-EXPOSE 3000
-CMD ["npm", "run", "preview"]
+**Request Body Example:**
+```json
+{
+  "mapping": {
+    "emailFromProperty": "email",
+    "emailFromName": "name",
+    "emailTo": "admin"
+  },
+  "formData": {
+    "type": "TYPE_RECRUITMENT",
+    "name": "Ion Popescu",
+    "email": "ion.popescu@email.com",
+    "phone": "0723456789",
+    "experience": "3-5-ani",
+    "hasVehicle": "yes",
+    "vehicleBrand": "Dacia Logan",
+    "vehicleYear": 2020,
+    "vehicleFuel": "benzina",
+    "vehicleColor": "Alb",
+    "availability": "imediat",
+    "preferredSchedule": "full-time",
+    "message": "Optional message",
+    "source": "/recrutare",
+    "acceptTerms": true
+  }
+}
 ```
 
-## 🤝 Contribuții
+**Response Example:**
+```json
+{
+  "success": true,
+  "message": "Application submitted successfully",
+  "data": {
+    "id": "app_123456",
+    "timestamp": "2024-01-15T10:30:00Z"
+  }
+}
+```
 
-1. Fork proiectul
-2. Creează un branch pentru feature (`git checkout -b feature/AmazingFeature`)
-3. Commit modificările (`git commit -m 'Add some AmazingFeature'`)
-4. Push pe branch (`git push origin feature/AmazingFeature`)
-5. Deschide un Pull Request
+### Available Scripts
 
-## 📄 Licență
-
-Distribuit sub licența MIT. Vezi `LICENSE` pentru mai multe informații.
-
-## 📞 Contact
-
-Pentru întrebări legate de implementare:
-- Email: dev@example.com
-- GitHub Issues: [Create Issue](../../issues)
-
----
-
-**Dezvoltat cu ❤️ pentru Bolt România**
+- `npm run dev` - Start development server with hot reload
+- `npm run build` - Create production build (optimized)
+- `npm run build-only` - Build without type checking  
+- `npm run preview` - Preview production build locally
+- `npm run lint` - Run ESLint check and fix

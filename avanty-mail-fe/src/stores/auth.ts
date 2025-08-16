@@ -3,10 +3,10 @@ import { defineStore } from 'pinia'
 import axios from 'axios'
 import { StatusTypes } from '@/types/api';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = import.meta.env.VITE_MAIL_API_BASE_URL;
 
 if (!API_BASE_URL) {
-  throw new Error('VITE_API_BASE_URL is not defined. Please set it in your environment variables.');
+  throw new Error('VITE_MAIL_API_BASE_URL is not defined. Please set it in your environment variables.');
 }
 
 export interface User {

@@ -339,9 +339,10 @@ export default {
       if (!this.canSubmit) return
       
       this.isSubmitting = true;
-      
+      const apiUrl = import.meta.env.VITE_MAIL_API_BASE_URL;
+
       try {
-        const response = await fetch('http://localhost:4000/api/forms', {
+        const response = await fetch(`${apiUrl}/api/forms`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

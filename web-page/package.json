@@ -1,6 +1,7 @@
 {
   "name": "ride-sharring-services",
   "version": "1.0.0",
+  "type": "module",
   "description": "Ride Sharring Web Page",
   "scripts": {
     "dev": "vite",
