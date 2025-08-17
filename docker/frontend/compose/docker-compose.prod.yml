@@ -1,13 +1,15 @@
-version: '3.8'
-
 services:
-  # Frontend Application
+  # Frontend Production with Nginx
   frontend:
-    build: .
-    container_name: avanty-mail-frontend
+    build:
+      context: ../../../avanty-mail-fe
+      dockerfile: ../docker/frontend/dockerfiles/Dockerfile
+    container_name: avanty-mail-frontend-prod
     restart: unless-stopped
     ports:
-      - "${FRONTEND_PORT:-5173}:80"
+      - "${FRONTEND_PORT}:80"
+    env_file:
+      - ../env/.env.production
     networks:
       - avanty-mail-network
     healthcheck:

@@ -56,11 +56,13 @@ web-page/
 ## 4. Setup and Running
 
 ### Prerequisites
-- Node.js 20+
-- npm or yarn
-- Docker (for production)
+- Node.js 20+ (for local development)
+- npm or yarn (for local development)
+- Docker (optional for development, required for production)
 
 ### 4.1. Run in Development Mode
+
+#### Option 1: Local Development (Recommended for development)
 
 1. **Install dependencies**
 ```bash
@@ -86,11 +88,26 @@ VITE_EMAIL=contact@example.com
 npm run dev
 ```
 
-**Development Details:**
-- **URL**: `http://localhost:3000` (configurable via DEV_SERVER_PORT)
+**Local Development Details:**
+- **URL**: `http://localhost:5173` (default Vite port)
 - **API**: `http://localhost:4000` (from `.env`)
-- **Features**: Hot reload, source maps, dev tools
-- **Mode**: Development with fast rebuilds
+- **Features**: Hot reload, source maps, dev tools, fast rebuilds
+- **Benefits**: Faster development cycle, immediate file changes
+
+#### Option 2: Docker Development
+
+For containerized development environment:
+
+```bash
+# Build and start in development mode
+docker-compose up --build
+```
+
+**Docker Development Details:**
+- **URL**: `http://localhost:8080`
+- **API**: `http://localhost:4000` (from `.env`)
+- **Features**: Containerized environment, consistent across teams
+- **Benefits**: Environment parity, isolated dependencies
 
 ### 4.2. Run in Production Mode
 

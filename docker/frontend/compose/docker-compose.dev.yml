@@ -1,0 +1,24 @@
+services:
+  # Frontend Development with hot reload
+  frontend:
+    build:
+      context: ../../../avanty-mail-fe
+      dockerfile: ../docker/frontend/dockerfiles/Dockerfile.dev
+    container_name: avanty-mail-frontend-dev
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT}:5173"
+    volumes:
+      - ../../../avanty-mail-fe:/app
+      - /app/node_modules
+    env_file:
+      - ../env/.env.development
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    networks:
+      - avanty-mail-network
+    command: npm run dev
+
+networks:
+  avanty-mail-network:
+    external: true

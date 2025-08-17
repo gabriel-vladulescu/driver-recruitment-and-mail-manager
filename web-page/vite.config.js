@@ -12,7 +12,6 @@ export default defineConfig({
   },
   root: 'public',
   publicDir: false,
-  envDir: '../',
   build: {
     outDir: '../dist',
     assetsDir: 'assets',

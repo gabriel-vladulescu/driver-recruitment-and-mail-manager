@@ -1,11 +1,26 @@
 {
-  "files": [],
-  "references": [
-    {
-      "path": "./tsconfig.node.json"
-    },
-    {
-      "path": "./tsconfig.app.json"
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "include": [
+    "env.d.ts",
+    "src/**/*",
+    "src/**/*.vue",
+    "vite.config.*",
+    "vitest.config.*",
+    "cypress.config.*",
+    "nightwatch.conf.*",
+    "playwright.config.*",
+    "eslint.config.*"
+  ],
+  "exclude": ["src/**/__tests__/*"],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "types": ["node"],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@helpers": ["./src/helpers/index.ts"]
     }
-  ]
+  }
 }

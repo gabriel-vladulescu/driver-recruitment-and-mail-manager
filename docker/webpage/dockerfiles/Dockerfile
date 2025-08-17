@@ -13,8 +13,8 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build the application (skip type checking for Docker build)
-RUN npm run build-only
+# Build the application
+RUN npm run build
 
 # Production stage
 FROM nginx:alpine AS production-stage
@@ -23,7 +23,7 @@ FROM nginx:alpine AS production-stage
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 
 # Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY ../docker/webpage/nginx/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose port
 EXPOSE 80
