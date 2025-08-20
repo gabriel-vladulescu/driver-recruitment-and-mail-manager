@@ -10,7 +10,7 @@ import { securityMiddleware } from './middleware/securityMiddleware';
 const app = express();
 app.use(securityMiddleware());
 app.use(bodyParserMiddleware());
-app.use('/api', router);
+app.use(router);
 app.use('*', notFoundMiddleware);
 app.use(errorMiddleware);
 

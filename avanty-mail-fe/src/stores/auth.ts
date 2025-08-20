@@ -33,7 +33,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function login(email: string, password: string) {
     try {
-      const response = await axios.post('/api/auth/login', {
+      const response = await axios.post('/auth/login', {
         email,
         password
       })
@@ -72,7 +72,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (!token.value) return false
 
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/auth/me`)
+      const response = await axios.get(`/auth/me`)
       if (response.data.status === StatusTypes.Success) {
         user.value = response.data.data
         return true

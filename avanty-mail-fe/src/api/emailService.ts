@@ -3,20 +3,47 @@ import { errorHelper, toastHelper } from '@/helpers';
 import { useEmailStore } from '@/stores/emailStore';
 
 export const emailService = {
+    getCategories: async () => {
+        try {
+            const response = await axios.get('/inbox/categories');
+            return response.data.data;
+        } catch (error) {
+            errorHelper.handleApiError(error, 'Eroare la preluarea categoriilor de inbox');
+            throw error;
+        }
+    },
+    getLabels: async () => {
+        try {
+            const response = await axios.get('/inbox/labels');
+            return response.data.data;
+        } catch (error) {
+            errorHelper.handleApiError(error, 'Eroare la preluarea etichetelor de inbox');
+            throw error;
+        }
+    },
+    getCounts: async () => {
+        try {
+            const response = await axios.get('/inbox/counts');
+            return response.data.data;
+        } catch (error) {
+            errorHelper.handleApiError(error, 'Eroare la preluarea numărului de email-uri');
+            throw error;
+        }
+    },
     markAsRead: async (emailIds: number | number[], isRead: boolean): Promise<void> => {
         const emailStore = useEmailStore();
         const ids = Array.isArray(emailIds) ? emailIds : [emailIds];
-        
+
         try {
-            const response = await axios.post('/api/inbox/emails/read', { 
-                ids, 
-                is_read: isRead 
+            const response = await axios.post('/inbox/emails/read', {
+                ids,
+                is_read: isRead
             });
-            
+
             toastHelper.add(response.data.message, response.data.status);
             emailStore.triggerUpdate();
             return;
-        } catch (error: any) {
+        } catch (error) {
             errorHelper.handleApiError(error, 'Eroare la actualizarea stării de citire');
             throw error;
         }
@@ -31,8 +58,8 @@ export const emailService = {
             if (fromArchive) {
                 payload.from_archive = true;
             }
-            
-            await axios.post('/api/inbox/trash', payload);
+
+            await axios.post('/inbox/trash', payload);
             const count = ids.length;
             toastHelper.success(`${count} email${count > 1 ? '-uri au fost mutate' : ' a fost mutat'} în coșul de gunoi`);
             emailStore.triggerUpdate();
@@ -51,7 +78,7 @@ export const emailService = {
         const ids = Array.isArray(emailIds) ? emailIds : [emailIds];
 
         try {
-            await axios.post('/api/inbox/archive', { ids });
+            await axios.post('/inbox/archive', { ids });
             const count = ids.length;
             toastHelper.success(`${count} email${count > 1 ? '-uri au fost arhivate' : ' a fost arhivat'}`);
             emailStore.triggerUpdate();
@@ -68,10 +95,10 @@ export const emailService = {
     cleanTrash: async (emailIds: number | number[]): Promise<void> => {
         const emailStore = useEmailStore();
         const ids = Array.isArray(emailIds) ? emailIds : [emailIds];
-        
+
         try {
-            const response = await axios.post('/api/inbox/trash/clean', { ids });
-            
+            const response = await axios.post('/inbox/trash/clean', { ids });
+
             toastHelper.add(response.data.message, response.data.status);
             emailStore.triggerUpdate();
             emailStore.triggerBackToList();
@@ -87,8 +114,8 @@ export const emailService = {
         const ids = Array.isArray(emailIds) ? emailIds : [emailIds];
 
         try {
-            const response = await axios.post('/api/inbox/trash/restore', { ids });
-            
+            const response = await axios.post('/inbox/trash/restore', { ids });
+
             toastHelper.add(response.data.message, response.data.status);
             emailStore.triggerUpdate();
             emailStore.triggerBackToList();
@@ -104,8 +131,8 @@ export const emailService = {
         const ids = Array.isArray(emailIds) ? emailIds : [emailIds];
 
         try {
-            const response = await axios.post('/api/inbox/archive/restore', { ids });
-            
+            const response = await axios.post('/inbox/archive/restore', { ids });
+
             toastHelper.add(response.data.message, response.data.status);
             emailStore.triggerUpdate();
             emailStore.triggerBackToList();
@@ -125,11 +152,11 @@ export const emailService = {
         let url;
 
         if (params.view?.type === 'trash') {
-            url = `/api/inbox/trash?page=${params.page || 1}&limit=${pageSize}`;
+            url = `/inbox/trash?page=${params.page || 1}&limit=${pageSize}`;
         } else if (params.view?.type === 'archive') {
-            url = `/api/inbox/archive?page=${params.page || 1}&limit=${pageSize}`;
+            url = `/inbox/archive?page=${params.page || 1}&limit=${pageSize}`;
         } else {
-            url = `/api/inbox/emails?page=${params.page || 1}&limit=${pageSize}`;
+            url = `/inbox/emails?page=${params.page || 1}&limit=${pageSize}`;
 
             if (params.view?.type === 'category' && params.view?.id) {
                 url += `&inbox_category_id=${params.view.id}`;

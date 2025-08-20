@@ -275,6 +275,7 @@ import {
 } from 'lucide-vue-next'
 import SettingsModal from './modals/SettingsModal.vue'
 import ConfirmDialog from './modals/ConfirmDialog.vue'
+import { emailService, labelService } from '@/api'
 
 // Types
 interface InboxCategory {
@@ -474,7 +475,7 @@ async function deleteLabel() {
   const labelName = labelToDelete.value.label
   
   try {
-    await axios.delete(`/api/inbox/labels/${deletedLabelId}`)
+    await labelService.deleteLabel(deletedLabelId);
     await fetchLabels()
     await fetchEmailCounts()
     
@@ -496,11 +497,11 @@ async function deleteLabel() {
 
 async function fetchInboxCategories() {
   try {
-    const response = await axios.get('/api/inbox/categories')
-    inboxCategories.value = response.data.data
+    const response = await emailService.getCategories();
+    inboxCategories.value = response;
     
     // Set default collapsed state for categories
-    response.data.data.forEach((category: InboxCategory) => {
+    response.forEach((category: InboxCategory) => {
       if (sectionsCollapsed.value[`category-${category.id}`] === undefined) {
         sectionsCollapsed.value[`category-${category.id}`] = true
       }
@@ -512,8 +513,8 @@ async function fetchInboxCategories() {
 
 async function fetchLabels() {
   try {
-    const response = await axios.get('/api/inbox/labels')
-    inboxLabels.value = response.data.data
+    const response = await emailService.getLabels();
+    inboxLabels.value = response;
   } catch (error) {
     console.error('Error fetching inbox labels:', error)
   }
@@ -524,8 +525,8 @@ const countsData = ref<any>(null)
 
 async function fetchEmailCounts() {
   try {
-    const response = await axios.get('/api/inbox/counts')
-    countsData.value = response.data.data
+    const response = await emailService.getCounts();
+    countsData.value = response;
     deletedEmailsCount.value = countsData.value.trash || 0
     archivedEmailsCount.value = countsData.value.archive || 0
   } catch (error) {

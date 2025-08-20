@@ -1,0 +1,79 @@
+name: AvantyMail
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: AvantyMail_MySQL
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    command:
+      - --host-cache-size=0
+      - --skip-name-resolve
+      - --symbolic-links=0
+      - --secure-file-priv=/var/lib/mysql-files/
+      - --local-infile=0
+      - --general-log=1
+      - --general-log-file=/var/lib/mysql/general.log
+      - --slow-query-log=1
+      - --slow-query-log-file=/var/lib/mysql/slow.log
+      - --log-error-verbosity=2
+      - --max-connections=100
+      - --max-user-connections=50
+      - --bind-address=0.0.0.0
+    ports:
+      - "${DB_PORT}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - mysql_files:/var/lib/mysql-files
+    tmpfs:
+      - /var/run/mysqld:rw,noexec,nosuid,size=100k
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - avanty-network
+
+  # Development API with file watching
+  api:
+    build:
+      context: .
+    container_name: AvantyMail_Backend
+    restart: unless-stopped
+    ports:
+      - "${PORT}:${PORT}"
+    env_file:
+      - .env
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${PORT}/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - avanty-network
+    command: npm run dev
+
+volumes:
+  mysql_data:
+  mysql_files:
+
+networks:
+  avanty-network:
+    driver: bridge

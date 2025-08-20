@@ -5,11 +5,11 @@
         <div class="login-header">
           <div class="logo">
             <div class="logo-icon">
-              <Shield class="icon" />
+              <Mail class="icon" />
             </div>
             <div class="logo-text">
-              <h1>Bloom Admin</h1>
-              <p>Panoul de administrare</p>
+              <h1>Avanty Mail</h1>
+              <p>Mail and Forms Manager</p>
             </div>
           </div>
         </div>
@@ -23,7 +23,7 @@
                 type="email"
                 id="email"
                 v-model="form.email"
-                placeholder="admin@bloom.ro"
+                placeholder="admin@example.com"
                 required
                 :disabled="isLoading"
               />
@@ -69,7 +69,7 @@
         <div class="login-footer">
           <p class="demo-credentials">
             <Info class="info-icon" />
-            Demo: admin@bloom.ro / admin123
+            Demo: admin@example.com / admin123
           </p>
         </div>
       </div>
@@ -83,7 +83,6 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import '@/assets/login.css';
 import {
-  Shield,
   Mail,
   Lock,
   Eye,

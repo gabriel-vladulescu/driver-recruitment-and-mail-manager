@@ -6,7 +6,7 @@ import type { LabelFormData } from '@/types';
 export const labelService = {
     getLabels: async () => {
         try {
-            const response = await axios.get('/api/inbox/labels');
+            const response = await axios.get('/inbox/labels');
             return response.data.data;
         } catch (error) {
             errorHelper.handleApiError(error, 'Eroare la obținerea etichetelor');
@@ -16,7 +16,7 @@ export const labelService = {
     addLabel: async (labelData: LabelFormData) => {
         const emailStore = useEmailStore();
         try {
-            const response = await axios.post(`/api/inbox/labels`, labelData);
+            const response = await axios.post(`/inbox/labels`, labelData);
             toastHelper.add(response.data.message, response.data.status);
             emailStore.triggerUpdate();
         } catch (error) {
@@ -27,11 +27,21 @@ export const labelService = {
     editLabel: async (labelId: string | number, labelData: LabelFormData) => {
         const emailStore = useEmailStore();
         try {
-            const response = await axios.patch(`/api/inbox/labels/${labelId}`, labelData);
+            const response = await axios.patch(`/inbox/labels/${labelId}`, labelData);
             toastHelper.add(response.data.message, response.data.status);
             emailStore.triggerUpdate();
         } catch (error) {
             errorHelper.handleApiError(error, 'Eroare la editarea etichetei');
+        }
+    },
+    deleteLabel: async (labelId: string | number) => {
+        const emailStore = useEmailStore();
+        try {
+            const response = await axios.delete(`/inbox/labels/${labelId}`);
+            toastHelper.add(response.data.message, response.data.status);
+            emailStore.triggerUpdate();
+        } catch (error) {
+            errorHelper.handleApiError(error, 'Eroare la ștergerea etichetei');
         }
     },
 
@@ -39,7 +49,7 @@ export const labelService = {
         const emailStore = useEmailStore();
         try {
             const response = await axios.post(
-                `/api/inbox/emails/label/${labelId}`,
+                `/inbox/emails/label/${labelId}`,
                 {
                     ids
                 }

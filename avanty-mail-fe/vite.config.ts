@@ -2,6 +2,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
+import { getEnvAsInt } from './src/helpers/envHelper'
 
 export default defineConfig({
   plugins: [
@@ -10,7 +11,7 @@ export default defineConfig({
   ],
   server: {
     host: '0.0.0.0',
-    port: 5173
+    port: getEnvAsInt('APP_PORT'),
   },
   resolve: {
     alias: {

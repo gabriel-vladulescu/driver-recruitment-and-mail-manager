@@ -18,7 +18,7 @@ interface EmailConnectionTests {
 export const serverService = {
     testConnectionImap: async (): Promise<ConnectionTestResult> => {
         try {
-            const response = await axios.get('/api/server/connection-test/imap');
+            const response = await axios.get('/server/connection-test/imap');
 
             if (response.data.status === StatusTypes.Success) {
                 // Extract email count from the message - format: "...Au fost gasite X email-uri."
@@ -49,7 +49,7 @@ export const serverService = {
 
     testConnectionSmtp: async (): Promise<ConnectionTestResult> => {
         try {
-            const response = await axios.get('/api/server/connection-test/smtp');
+            const response = await axios.get('/server/connection-test/smtp');
 
             if (response.data.status === StatusTypes.Success) {
                 return {
@@ -92,7 +92,7 @@ export const serverService = {
 
     fetchEmailsFromServer: async () => {
         try {
-            const response = await axios.post('/api/server/emails', {});
+            const response = await axios.get('/server/emails');
             return response.data;
         } catch (error) {
             console.error('Error updating read status:', error);
@@ -110,7 +110,7 @@ export const serverService = {
         const emailStore = useEmailStore();
 
         try {
-            const response = await axios.post(`/api/server/reply`, emailData);
+            const response = await axios.post(`/server/reply`, emailData);
 
             if (response.data.success) {
                 toastHelper.success('Email trimis cu succes!');
