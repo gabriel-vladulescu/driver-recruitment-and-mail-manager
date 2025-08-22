@@ -1,3 +1,7 @@
+## Project Status
+👉 See [TODO.md](TODO.md) for upcoming tasks.
+
+
 # Avanty Mail Platform
 
 ## Quick Start
